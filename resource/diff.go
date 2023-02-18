@@ -2,7 +2,6 @@ package resource
 
 import (
 	"errors"
-	"fmt"
 
 	r3diff "github.com/r3labs/diff/v3"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -39,7 +38,7 @@ func Diff(old resmap.ResMap, new resmap.ResMap) ([]ResourceDiff, error) {
 			})
 			continue
 		}
-		fmt.Printf("Comparing new object %q with old %q\n", r.CurId(), matching.CurId())
+
 		changelog, err := r3diff.Diff(matching, r)
 
 		if err != nil {
