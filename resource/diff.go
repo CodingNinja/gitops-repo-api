@@ -1,9 +1,12 @@
 package resource
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	r3diff "github.com/r3labs/diff/v3"
+	"gopkg.in/yaml.v2"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/resource"
 )
@@ -23,7 +26,28 @@ type ResourceDiff struct {
 	Diff r3diff.Changelog
 }
 
-func Diff(old resmap.ResMap, new resmap.ResMap) ([]ResourceDiff, error) {
+func diffResources(aRes, bRes *resource.Resource) (r3diff.Changelog, error) {
+	aYaml, err := aRes.AsYAML()
+	if err != nil {
+		return nil, err
+	}
+	bYaml, err := bRes.AsYAML()
+	if err != nil {
+		return nil, err
+	}
+	aObj := make(map[string]interface{})
+	bObj := make(map[string]interface{})
+	if err := yaml.Unmarshal([]byte(aYaml), &aObj); err != nil {
+		return nil, fmt.Errorf("unable to parse yaml for item a - %w", err)
+	}
+	if err := yaml.Unmarshal([]byte(bYaml), &bObj); err != nil {
+		return nil, fmt.Errorf("unable to parse yaml for item b - %w", err)
+	}
+
+	return r3diff.Diff(aObj, bObj)
+}
+
+func Diff(ctx context.Context, old resmap.ResMap, new resmap.ResMap) ([]ResourceDiff, error) {
 	diff := []ResourceDiff{}
 
 	var errs error
@@ -39,12 +63,13 @@ func Diff(old resmap.ResMap, new resmap.ResMap) ([]ResourceDiff, error) {
 			continue
 		}
 
-		changelog, err := r3diff.Diff(matching, r)
+		changelog, err := diffResources(matching, r)
 
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue
 		}
+		fmt.Printf("comparing %q and %q - %+v\n", r.CurId(), matching.CurId(), changelog)
 
 		if len(changelog) > 0 {
 			diff = append(diff, ResourceDiff{

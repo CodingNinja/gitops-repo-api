@@ -15,15 +15,15 @@ import (
 	"github.com/gosimple/slug"
 )
 
-func NewRepoSpec(url string, credentials transport.AuthMethod) *repoSpec {
-	return &repoSpec{
+func NewRepoSpec(url string, credentials transport.AuthMethod) *RepoSpec {
+	return &RepoSpec{
 		URL:         url,
 		Credentials: credentials,
 		Progress:    os.Stdout,
 	}
 }
 
-type repoSpec struct {
+type RepoSpec struct {
 	URL         string
 	Credentials transport.AuthMethod
 	Progress    io.Writer
@@ -31,15 +31,15 @@ type repoSpec struct {
 	l           sync.Mutex
 }
 
-func (rs *repoSpec) Name() string {
+func (rs *RepoSpec) Name() string {
 	return slug.Make(rs.URL)
 }
 
-func (rs *repoSpec) CloneDirectory(branch string) string {
+func (rs *RepoSpec) CloneDirectory(branch string) string {
 	return path.Join(os.TempDir(), rs.Name(), branch)
 }
 
-func (rs *repoSpec) Open(ctx context.Context) (*git.Repository, error) {
+func (rs *RepoSpec) Open(ctx context.Context) (*git.Repository, error) {
 	rs.l.Lock()
 	defer rs.l.Unlock()
 	if rs.repo != nil {
@@ -48,11 +48,9 @@ func (rs *repoSpec) Open(ctx context.Context) (*git.Repository, error) {
 	directory := rs.CloneDirectory(".root")
 
 	r, err := cloneRepo(ctx, directory, true, git.CloneOptions{
-		URL:               rs.URL,
-		Auth:              rs.Credentials,
-		NoCheckout:        true,
-		Progress:          rs.Progress,
-		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+		URL:      rs.URL,
+		Auth:     rs.Credentials,
+		Progress: rs.Progress,
 	})
 
 	if err != nil {
@@ -64,10 +62,18 @@ func (rs *repoSpec) Open(ctx context.Context) (*git.Repository, error) {
 	return rs.repo, nil
 }
 
-func (rs *repoSpec) Checkout(ctx context.Context, reference *plumbing.Reference) (*git.Repository, string, error) {
-	_, err := rs.Open(ctx)
+func (rs *RepoSpec) Checkout(ctx context.Context, reference *plumbing.Reference) (*git.Repository, string, error) {
+	repo, err := rs.Open(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
+	}
+	cur, err := repo.ResolveRevision(plumbing.Revision(plumbing.NewRemoteReferenceName("origin", reference.Name().Short())))
+	if err != nil {
+		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
+	}
+
+	if err := repo.Storer.SetReference(plumbing.NewHashReference(reference.Name(), *cur)); err != nil {
+		return nil, "", err
 	}
 
 	rootDirectory := rs.CloneDirectory(".root")

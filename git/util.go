@@ -22,14 +22,15 @@ func cloneRepo(ctx context.Context, directory string, isBare bool, opts git.Clon
 			if err := os.RemoveAll(directory); err != nil {
 				return nil, fmt.Errorf("unable to cleanup bad cache dir - %w", err)
 			}
-		}
-		err = r.FetchContext(ctx, &git.FetchOptions{
-			Auth:     opts.Auth,
-			Progress: opts.Progress,
-			Force:    true,
-		})
-		if err != nil && err != git.NoErrAlreadyUpToDate {
-			return nil, fmt.Errorf("unable to fetch latest changes for %q from %q - %w", directory, opts.URL, err)
+		} else {
+			err = r.FetchContext(ctx, &git.FetchOptions{
+				Auth:     opts.Auth,
+				Progress: opts.Progress,
+				Force:    true,
+			})
+			if err != nil && err != git.NoErrAlreadyUpToDate {
+				return nil, fmt.Errorf("unable to fetch latest changes for %q from %q - %w", directory, opts.URL, err)
+			}
 		}
 	}
 
