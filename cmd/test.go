@@ -18,8 +18,11 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"git.dmann.xyz/davidmann/gitops-repo-api/diff"
+	"git.dmann.xyz/davidmann/gitops-repo-api/entrypoint"
 	"git.dmann.xyz/davidmann/gitops-repo-api/git"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -32,20 +35,32 @@ var testCmd = &cobra.Command{
 	Short: "Test code",
 	Long:  `Test`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 3 {
+			return fmt.Errorf("invalid arguments, expected 3, got %+v", args)
+		}
+		repo := args[0]
+		from := args[1]
+		to := args[2]
 		ctx := context.Background()
 
-		rs := git.NewRepoSpec("https://git.dmann.dev/davidmann/manifests.git", nil)
+		rs := git.NewRepoSpec(repo, nil)
 
-		branchName := "main"
-		preRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName(branchName), plumbing.NewHash("3d0a8971857bcbe3124a73253ac235fa3eb95072"))
+		branchName := to
+		preRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName(branchName), plumbing.NewHash(from))
 		postRef := plumbing.NewSymbolicReference(preRef.Name(), preRef.Name())
-
-		diff, err := diff.Diff(ctx, rs, preRef, postRef)
-		if err != nil {
-			return err
+		epds := []entrypoint.EntrypointDiscoverySpec{
+			{
+				Type: "kustomization",
+				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
+				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
+				Context: map[string]string{
+					"name": "k8-workshop",
+				},
+			},
 		}
+		diff, err := diff.Diff(ctx, rs, epds, preRef, postRef)
 
-		spew.Dump(diff)
+		spew.Dump(diff, err)
 
 		return nil
 

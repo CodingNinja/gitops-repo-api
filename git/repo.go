@@ -67,16 +67,22 @@ func (rs *RepoSpec) Checkout(ctx context.Context, reference *plumbing.Reference)
 	if err != nil {
 		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
 	}
-	cur, err := repo.ResolveRevision(plumbing.Revision(plumbing.NewRemoteReferenceName("origin", reference.Name().Short())))
-	if err != nil {
-		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
-	}
+	// If the thing we want to checkout is a ref, first update that ref
+	// in the local base repo to match the latest fetched origin hash
+	if reference.Type() == plumbing.SymbolicReference {
+		cur, err := repo.ResolveRevision(plumbing.Revision(plumbing.NewRemoteReferenceName("origin", reference.Name().Short())))
+		if err != nil {
+			return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
+		}
 
-	if err := repo.Storer.SetReference(plumbing.NewHashReference(reference.Name(), *cur)); err != nil {
-		return nil, "", err
+		if err := repo.Storer.SetReference(plumbing.NewHashReference(reference.Name(), *cur)); err != nil {
+			return nil, "", err
+		}
 	}
 
 	rootDirectory := rs.CloneDirectory(".root")
+	// We clone the root directory to enable multiple concurrent bulids of the same
+	// repo without killing the upstream git repo
 	dirName := reference.Target().Short()
 	if dirName == "" {
 		dirName = reference.Hash().String()

@@ -2,6 +2,8 @@
 
 Provides an API ontop of a Gitops Repo
 
+![Example output](./doc/assets/example-output.png)
+
 # Diff
 Diff the kubernetes resources between 2 commits in all discovered entrypoints
 

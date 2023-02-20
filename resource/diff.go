@@ -69,7 +69,6 @@ func Diff(ctx context.Context, old resmap.ResMap, new resmap.ResMap) ([]Resource
 			errs = errors.Join(errs, err)
 			continue
 		}
-		fmt.Printf("comparing %q and %q - %+v\n", r.CurId(), matching.CurId(), changelog)
 
 		if len(changelog) > 0 {
 			diff = append(diff, ResourceDiff{

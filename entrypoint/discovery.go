@@ -9,8 +9,9 @@ import (
 )
 
 type EntrypointDiscoverySpec struct {
-	Type  EntrypointType
-	Regex regexp.Regexp
+	Type    EntrypointType
+	Regex   regexp.Regexp
+	Context map[string]string
 }
 
 func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]Entrypoint, error) {
@@ -26,12 +27,16 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				if !ok {
 					name = slug.Make(path)
 				}
+				epctx := s.Context
+				for k, v := range matches {
+					epctx[k] = v
+				}
 
 				entrypoints = append(entrypoints, Entrypoint{
 					Name:      name,
 					Directory: path[len(filepath.Clean(directory))+1:],
 					Type:      s.Type,
-					Context:   matches,
+					Context:   epctx,
 				})
 
 				return nil
