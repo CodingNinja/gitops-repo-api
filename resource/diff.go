@@ -13,14 +13,15 @@ import (
 	"gopkg.in/yaml.v2"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/resource"
+	"sigs.k8s.io/kustomize/kyaml/resid"
 )
 
 type DiffType string
 
 const (
-	DiffTypeCreate DiffType = "create"
-	DiffTypeUpdate DiffType = "update"
-	DiffTypeDelete DiffType = "delete"
+	DiffTypeCreate DiffType = r3diff.CREATE
+	DiffTypeUpdate DiffType = r3diff.UPDATE
+	DiffTypeDelete DiffType = r3diff.DELETE
 )
 
 type Resource struct {
@@ -32,6 +33,36 @@ type ResourceDiff struct {
 	Pre  *Resource
 	Post *Resource
 	Diff r3diff.Changelog
+}
+
+func (rd *ResourceDiff) Gvk() resid.Gvk {
+	if rd.Post != nil {
+		return rd.Post.Resource.GetGvk()
+	}
+	if rd.Pre != nil {
+		return rd.Pre.Resource.GetGvk()
+	}
+
+	return resid.Gvk{}
+}
+func (rd *ResourceDiff) Name() string {
+	ns := ""
+	name := ""
+	if rd.Post != nil {
+		ns = rd.Post.Resource.GetNamespace()
+		name = rd.Post.Resource.GetName()
+	}
+	if rd.Pre != nil {
+		ns = rd.Pre.Resource.GetNamespace()
+		name = rd.Pre.Resource.GetName()
+	}
+	if ns == "" {
+		return name
+	}
+	return fmt.Sprintf("%s/%s", ns, name)
+}
+func (rd *ResourceDiff) String() string {
+	return fmt.Sprintf("%s[%s]", rd.Gvk().String(), rd.Name())
 }
 
 func diffResources(aRes, bRes *resource.Resource) (r3diff.Changelog, error) {

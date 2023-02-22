@@ -18,14 +18,17 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
+	"strings"
 
 	"git.dmann.xyz/davidmann/gitops-repo-api/diff"
 	"git.dmann.xyz/davidmann/gitops-repo-api/entrypoint"
 	"git.dmann.xyz/davidmann/gitops-repo-api/git"
+	"git.dmann.xyz/davidmann/gitops-repo-api/resource"
 	"github.com/go-git/go-git/v5/plumbing"
+	r3diff "github.com/r3labs/diff/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +38,7 @@ var testCmd = &cobra.Command{
 	Short: "Test code",
 	Long:  `Test`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		debug := false
 		if len(args) != 3 {
 			return fmt.Errorf("invalid arguments, expected 3, got %+v", args)
 		}
@@ -44,6 +48,10 @@ var testCmd = &cobra.Command{
 		ctx := context.Background()
 
 		rs := git.NewRepoSpec(repo, nil)
+
+		if debug {
+			rs.Progress = os.Stdout
+		}
 
 		branchName := to
 		preRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName(branchName), plumbing.NewHash(from))
@@ -64,11 +72,37 @@ var testCmd = &cobra.Command{
 			fmt.Printf("Got errors diffing resources:\n\n%s\n", err.Error())
 		}
 
-		encoded, err := json.MarshalIndent(diff, "", "  ")
-		if err != nil {
-			return err
+		for _, ep := range diff {
+			fmt.Printf("Entrypoint %q was changed:\n", ep.Entrypoint.Directory)
+			for _, res := range ep.Diff {
+				fmt.Printf("Detected changes in resource %s\n", res.String())
+				if res.Type == resource.DiffTypeCreate {
+					fmt.Printf("	Resource %q was created\n", res.Name())
+				} else {
+					for _, change := range res.Diff {
+						fmt.Printf("	Field %s ", strings.Join(change.Path, "."))
+						if change.Type == r3diff.UPDATE {
+							fmt.Printf("was updated from %q to %q\n", change.From, change.To)
+						} else if change.Type == r3diff.CREATE {
+							fmt.Printf("was created with an initial value of %q\n", change.To)
+						} else if change.Type == r3diff.DELETE {
+							fmt.Printf("was deleted, previously it's value was %q\n", change.From)
+						} else {
+							fmt.Print("Unknown change type!!\n")
+						}
+					}
+				}
+				fmt.Printf("\n")
+			}
+
+			fmt.Print("\n\n")
 		}
-		fmt.Print(string(encoded))
+
+		// encoded, err := json.MarshalIndent(diff, "", "  ")
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Print(string(encoded))
 
 		return nil
 

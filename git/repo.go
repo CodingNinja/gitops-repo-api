@@ -19,7 +19,6 @@ func NewRepoSpec(url string, credentials transport.AuthMethod) *RepoSpec {
 	return &RepoSpec{
 		URL:         url,
 		Credentials: credentials,
-		Progress:    os.Stdout,
 	}
 }
 
