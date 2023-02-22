@@ -192,9 +192,9 @@ func epOrigin(rs *git.RepoSpec, ep entrypoint.Entrypoint, o *resource.Origin) re
 
 	if origin.Repo == "" {
 		ref := ""
-		if !ep.Hash.IsZero() {
+		if ep.Hash != nil {
 			ref = ep.Hash.String()
-		} else if ep.Branch != "" {
+		} else if ep.Branch != nil {
 			ref = ep.Branch.String()
 		} else {
 			ref = "unknown"

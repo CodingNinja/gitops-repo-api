@@ -18,13 +18,13 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 
 	"git.dmann.xyz/davidmann/gitops-repo-api/diff"
 	"git.dmann.xyz/davidmann/gitops-repo-api/entrypoint"
 	"git.dmann.xyz/davidmann/gitops-repo-api/git"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
 )
@@ -60,8 +60,15 @@ var testCmd = &cobra.Command{
 		}
 		differ := diff.NewDiffer(rs, epds)
 		diff, err := differ.Diff(ctx, preRef, postRef)
+		if err != nil {
+			fmt.Printf("Got errors diffing resources:\n\n%s\n", err.Error())
+		}
 
-		spew.Dump(diff, err)
+		encoded, err := json.MarshalIndent(diff, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Print(string(encoded))
 
 		return nil
 

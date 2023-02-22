@@ -2,6 +2,7 @@ package entrypoint
 
 import (
 	"io/fs"
+	"path"
 	"path/filepath"
 	"regexp"
 
@@ -17,6 +18,7 @@ type EntrypointDiscoverySpec struct {
 // DiscoverEntrypoints finds all the entrypoints matching the supplied EntrypointDiscoverySpecs
 // TODO: Make this more performant, add a flag to only check dir names, include a basedir prop to limit search context
 func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]Entrypoint, error) {
+	directory = path.Clean(directory)
 	entrypoints := []Entrypoint{}
 	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
@@ -27,7 +29,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 			if matches, ok := regexNamedMatches(path, s.Regex); ok {
 				name, ok := matches["name"]
 				if !ok {
-					name = slug.Make(path)
+					name = slug.Make(path[len(directory)+1:])
 				}
 				epctx := s.Context
 				for k, v := range matches {

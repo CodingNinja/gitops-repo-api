@@ -9,8 +9,8 @@ const (
 )
 
 type Entrypoint struct {
-	Hash      plumbing.Hash
-	Branch    plumbing.ReferenceName
+	Hash      *plumbing.Hash
+	Branch    *plumbing.ReferenceName
 	Name      string
 	Directory string
 	Type      EntrypointType
