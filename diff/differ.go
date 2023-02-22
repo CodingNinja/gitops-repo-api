@@ -14,6 +14,18 @@ import (
 	"sigs.k8s.io/kustomize/api/resmap"
 )
 
+func NewDiffer(rs *git.RepoSpec, epds []entrypoint.EntrypointDiscoverySpec) *repoDiffer {
+	return &repoDiffer{
+		rs:   rs,
+		epds: epds,
+	}
+}
+
+type repoDiffer struct {
+	rs   *git.RepoSpec
+	epds []entrypoint.EntrypointDiscoverySpec
+}
+
 type EntrypointDiff struct {
 	Entrypoint entrypoint.Entrypoint
 	Error      error
@@ -22,15 +34,15 @@ type EntrypointDiff struct {
 
 // Diff will return either an EntrypointDiff, or an Error for every Entrypoint that is discovered in the
 // pre
-func Diff(ctx context.Context, rs *git.RepoSpec, epds []entrypoint.EntrypointDiscoverySpec, pre, post *plumbing.Reference) ([]EntrypointDiff, error) {
+func (rd *repoDiffer) Diff(ctx context.Context, pre, post *plumbing.Reference) ([]EntrypointDiff, error) {
 	cleanup := true
 
-	_, preDir, err := rs.Checkout(ctx, pre)
+	_, preDir, err := rd.rs.Checkout(ctx, pre)
 	if err != nil {
 		return nil, fmt.Errorf("unable to pre change dir - %w", err)
 	}
 
-	_, postDir, err := rs.Checkout(ctx, post)
+	_, postDir, err := rd.rs.Checkout(ctx, post)
 	if err != nil {
 		return nil, fmt.Errorf("unable to checkout post change dir - %w", err)
 	}
@@ -53,7 +65,7 @@ func Diff(ctx context.Context, rs *git.RepoSpec, epds []entrypoint.EntrypointDis
 		}
 	}()
 
-	eps, err := discoverEntrypoints(ctx, preDir, postDir, epds)
+	eps, err := discoverEntrypoints(ctx, preDir, postDir, rd.epds)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +79,7 @@ func Diff(ctx context.Context, rs *git.RepoSpec, epds []entrypoint.EntrypointDis
 		go func() {
 			defer wg.Done()
 
-			diff, err := diffEntrypoint(ctx, ep.ep, preDir, postDir)
+			diff, err := rd.diffEntrypoint(ctx, ep.ep, preDir, postDir)
 			if err != nil {
 				errs = errors.Join(errs, err)
 			}
@@ -86,8 +98,10 @@ func Diff(ctx context.Context, rs *git.RepoSpec, epds []entrypoint.EntrypointDis
 }
 
 type internalentrypoint struct {
-	t  string
-	ep entrypoint.Entrypoint
+	t      string
+	ep     entrypoint.Entrypoint
+	hash   plumbing.Hash
+	branch plumbing.ReferenceName
 }
 
 func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []entrypoint.EntrypointDiscoverySpec) ([]internalentrypoint, error) {
@@ -119,7 +133,7 @@ func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []ent
 	return eplist, nil
 }
 
-func diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, error) {
+func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, error) {
 	ewg := sync.WaitGroup{}
 	ewg.Add(1)
 	var preResources *resmap.ResMap
@@ -152,7 +166,7 @@ func diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postD
 		return nil, buildErrs
 	}
 
-	diff, err := resource.Diff(ctx, *preResources, *postResources)
+	diff, err := resource.Diff(ctx, rd.rs, ep, *preResources, *postResources)
 	if err != nil {
 		return nil, err
 	}

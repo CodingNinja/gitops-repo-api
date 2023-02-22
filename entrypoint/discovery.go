@@ -14,6 +14,8 @@ type EntrypointDiscoverySpec struct {
 	Context map[string]string
 }
 
+// DiscoverEntrypoints finds all the entrypoints matching the supplied EntrypointDiscoverySpecs
+// TODO: Make this more performant, add a flag to only check dir names, include a basedir prop to limit search context
 func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]Entrypoint, error) {
 	entrypoints := []Entrypoint{}
 	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
@@ -22,7 +24,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 		}
 
 		for _, s := range specs {
-			if matches, ok := RegexMatches(path, s.Regex); ok {
+			if matches, ok := regexNamedMatches(path, s.Regex); ok {
 				name, ok := matches["name"]
 				if !ok {
 					name = slug.Make(path)
@@ -53,7 +55,8 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 	return entrypoints, nil
 }
 
-func RegexMatches(str string, regex regexp.Regexp) (map[string]string, bool) {
+// regexNamedMatches Returns a map of named capture => value
+func regexNamedMatches(str string, regex regexp.Regexp) (map[string]string, bool) {
 	match := regex.FindStringSubmatch(str)
 	result := make(map[string]string)
 

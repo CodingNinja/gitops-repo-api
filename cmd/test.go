@@ -58,7 +58,8 @@ var testCmd = &cobra.Command{
 				},
 			},
 		}
-		diff, err := diff.Diff(ctx, rs, epds, preRef, postRef)
+		differ := diff.NewDiffer(rs, epds)
+		diff, err := differ.Diff(ctx, preRef, postRef)
 
 		spew.Dump(diff, err)
 
