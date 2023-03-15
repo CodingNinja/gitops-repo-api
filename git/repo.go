@@ -74,9 +74,10 @@ func (rs *RepoSpec) Checkout(ctx context.Context, reference *plumbing.Reference)
 			return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
 		}
 
-		if err := repo.Storer.SetReference(plumbing.NewHashReference(reference.Name(), *cur)); err != nil {
+		if err := repo.Storer.SetReference(plumbing.NewHashReference(reference.Target(), *cur)); err != nil {
 			return nil, "", err
 		}
+		reference = plumbing.NewHashReference(reference.Name(), *cur)
 	}
 
 	rootDirectory := rs.CloneDirectory(".root")
@@ -90,7 +91,7 @@ func (rs *RepoSpec) Checkout(ctx context.Context, reference *plumbing.Reference)
 
 	branchRepo, err := cloneRepo(ctx, branchDirectory, false, git.CloneOptions{
 		URL:               rootDirectory,
-		NoCheckout:        false,
+		NoCheckout:        true,
 		Progress:          rs.Progress,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
