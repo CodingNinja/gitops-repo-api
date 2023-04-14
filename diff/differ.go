@@ -7,9 +7,9 @@ import (
 	"os"
 	"sync"
 
-	"git.dmann.xyz/davidmann/gitops-repo-api/entrypoint"
-	"git.dmann.xyz/davidmann/gitops-repo-api/git"
-	"git.dmann.xyz/davidmann/gitops-repo-api/resource"
+	"github.com/codingninja/gitops-repo-api/entrypoint"
+	"github.com/codingninja/gitops-repo-api/git"
+	"github.com/codingninja/gitops-repo-api/resource"
 	"github.com/go-git/go-git/v5/plumbing"
 	"sigs.k8s.io/kustomize/api/resmap"
 )
@@ -27,16 +27,14 @@ type repoDiffer struct {
 }
 
 type EntrypointDiff struct {
-	Entrypoint entrypoint.Entrypoint
-	Error      error
-	Diff       []resource.ResourceDiff
+	Entrypoint entrypoint.Entrypoint   `json:"entrypoint"`
+	Error      error                   `json:"error"`
+	Diff       []resource.ResourceDiff `json:"diff"`
 }
 
 // Diff will return either an EntrypointDiff, or an Error for every Entrypoint that is discovered in the
 // pre
-func (rd *repoDiffer) Diff(ctx context.Context, pre, post *plumbing.Reference) ([]EntrypointDiff, error) {
-	cleanup := true
-
+func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName) ([]EntrypointDiff, error) {
 	_, preDir, err := rd.rs.Checkout(ctx, pre)
 	if err != nil {
 		return nil, fmt.Errorf("unable to pre change dir - %w", err)
@@ -48,11 +46,6 @@ func (rd *repoDiffer) Diff(ctx context.Context, pre, post *plumbing.Reference) (
 	}
 
 	defer func() {
-		if !cleanup {
-			fmt.Printf("\n\n=========================\n\nNot cleaning up\n%s\n%s\n\n=========================\n\n", preDir, postDir)
-			return
-		}
-
 		var errs error
 		if err := os.RemoveAll(preDir); err != nil {
 			errs = errors.Join(errs, err)
@@ -155,21 +148,29 @@ func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoi
 		defer ewg.Done()
 		pr, err := entrypoint.ExtractResources(postDir, ep)
 		if err != nil {
-			buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build pre-entrypoint - %w", err))
+			buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build post-entrypoint - %w", err))
 			return
 		}
 		postResources = &pr
 	}()
 
 	ewg.Wait()
-	if buildErrs != nil {
+	if buildErrs != nil && preResources == nil && postResources == nil {
 		return nil, buildErrs
+	}
+	if preResources == nil {
+		rm := resmap.New()
+		preResources = &rm
+	}
+	if postResources == nil {
+		rm := resmap.New()
+		postResources = &rm
 	}
 
 	diff, err := resource.Diff(ctx, rd.rs, ep, *preResources, *postResources)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(buildErrs, err)
 	}
 
-	return diff, nil
+	return diff, buildErrs
 }

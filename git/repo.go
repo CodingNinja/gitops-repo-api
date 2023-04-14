@@ -53,7 +53,7 @@ func (rs *RepoSpec) Open(ctx context.Context) (*git.Repository, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to clone repo - %w", err)
+		return nil, fmt.Errorf("unable to clone the main repo - %w", err)
 	}
 
 	rs.repo = r
@@ -61,37 +61,37 @@ func (rs *RepoSpec) Open(ctx context.Context) (*git.Repository, error) {
 	return rs.repo, nil
 }
 
-func (rs *RepoSpec) Checkout(ctx context.Context, reference *plumbing.Reference) (*git.Repository, string, error) {
+func (rs *RepoSpec) Checkout(ctx context.Context, reference plumbing.ReferenceName) (*git.Repository, string, error) {
 	repo, err := rs.Open(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
 	}
 	// If the thing we want to checkout is a ref, first update that ref
 	// in the local base repo to match the latest fetched origin hash
-	if reference.Type() == plumbing.SymbolicReference {
-		cur, err := repo.ResolveRevision(plumbing.Revision(plumbing.NewRemoteReferenceName("origin", reference.Name().Short())))
-		if err != nil {
-			return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
-		}
-
-		if err := repo.Storer.SetReference(plumbing.NewHashReference(reference.Target(), *cur)); err != nil {
-			return nil, "", err
-		}
-		reference = plumbing.NewHashReference(reference.Name(), *cur)
+	cur, err := repo.ResolveRevision(plumbing.Revision(plumbing.NewRemoteReferenceName("origin", reference.Short())))
+	if err != nil {
+		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
 	}
+
+	if err := repo.Storer.SetReference(plumbing.NewHashReference(reference, *cur)); err != nil {
+		return nil, "", err
+	}
+	hashRef := plumbing.NewHashReference(reference, *cur)
 
 	rootDirectory := rs.CloneDirectory(".root")
 	// We clone the root directory to enable multiple concurrent bulids of the same
 	// repo without killing the upstream git repo
-	dirName := reference.Target().Short()
+	dirName := hashRef.Target().Short()
 	if dirName == "" {
-		dirName = reference.Hash().String()
+		dirName = hashRef.Hash().String()
 	}
 	branchDirectory := path.Join(rs.CloneDirectory(dirName), uuid.New().String())
 
 	branchRepo, err := cloneRepo(ctx, branchDirectory, false, git.CloneOptions{
 		URL:               rootDirectory,
-		NoCheckout:        true,
+		Depth:             1,
+		ReferenceName:     hashRef.Name(),
+		SingleBranch:      true,
 		Progress:          rs.Progress,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
@@ -105,21 +105,10 @@ func (rs *RepoSpec) Checkout(ctx context.Context, reference *plumbing.Reference)
 		return nil, "", fmt.Errorf("unable to get worktree for branch repo - %w", err)
 	}
 
-	if reference.Type() == plumbing.HashReference {
-		err := wt.Checkout(&git.CheckoutOptions{
-			Hash: reference.Hash(),
-		})
-		if err != nil {
-			return nil, "", fmt.Errorf("unable to checkout reference %q for branch repo - %w", reference.String(), err)
-		}
-	} else {
-		err := wt.Checkout(&git.CheckoutOptions{
-			Branch: reference.Name(),
-			Force:  true,
-		})
-		if err != nil {
-			return nil, "", fmt.Errorf("unable to checkout reference %q for branch repo - %w", reference.String(), err)
-		}
+	if err := wt.Checkout(&git.CheckoutOptions{
+		Hash: hashRef.Hash(),
+	}); err != nil {
+		return nil, "", fmt.Errorf("unable to checkout reference %q for hash ref - %w", reference.String(), err)
 	}
 
 	return branchRepo, branchDirectory, nil

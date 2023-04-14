@@ -7,8 +7,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"git.dmann.xyz/davidmann/gitops-repo-api/entrypoint"
-	"git.dmann.xyz/davidmann/gitops-repo-api/git"
+	"github.com/codingninja/gitops-repo-api/entrypoint"
+	"github.com/codingninja/gitops-repo-api/git"
 	r3diff "github.com/r3labs/diff/v3"
 	"gopkg.in/yaml.v2"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -25,14 +25,15 @@ const (
 )
 
 type Resource struct {
-	*resource.Resource
-	resource.Origin
+	Resource *resource.Resource `json:"resource"`
+	Origin   resource.Origin    `json:"origin"`
 }
+
 type ResourceDiff struct {
-	Type DiffType
-	Pre  *Resource
-	Post *Resource
-	Diff r3diff.Changelog
+	Type DiffType         `json:"type"`
+	Pre  *Resource        `json:"pre"`
+	Post *Resource        `json:"post"`
+	Diff r3diff.Changelog `json:"diff"`
 }
 
 func (rd *ResourceDiff) Gvk() resid.Gvk {
@@ -223,9 +224,9 @@ func epOrigin(rs *git.RepoSpec, ep entrypoint.Entrypoint, o *resource.Origin) re
 
 	if origin.Repo == "" {
 		ref := ""
-		if ep.Hash != nil {
+		if !ep.Hash.IsZero() {
 			ref = ep.Hash.String()
-		} else if ep.Branch != nil {
+		} else if ep.Branch.IsBranch() {
 			ref = ep.Branch.String()
 		} else {
 			ref = "unknown"

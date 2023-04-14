@@ -1,0 +1,59 @@
+
+syntax = "proto3";
+
+package apipb;
+option go_package = "github.com/codingninja/gitops-repo-api/api";
+
+// Interface exported by the server.
+
+service DiffApi {
+  rpc Diff(DiffRequest) returns(DiffResponse);
+}
+
+message DiffRequest {
+    message Filter { }
+    Reference From = 1;
+    Reference To = 2;
+    repeated Filter Filters = 3;
+}
+
+message Reference {
+    string Repository = 1;
+    string Target = 2;
+}
+
+message Entrypoint {
+
+}
+
+enum DiffType {
+    CREATE = 0;
+    UPDATE = 1;
+    DELETE = 2;
+}
+
+message Resource {}
+
+message DiffResponse {
+    message Diff {
+        message EntrypointDiff {
+            message Change {
+                string Type  = 1;
+                repeated string Path  = 2;
+                string From  = 3;
+                string To   = 4;
+                string parent  = 5;
+            }
+
+            DiffType Type = 1;
+            Resource Pre   = 2;
+            Resource Post  = 3;
+            repeated Change Diffs = 4;
+        }
+
+        Entrypoint Entrypoint = 1;
+        string Error = 2;
+        repeated EntrypointDiff Changes = 3;
+    }
+    repeated Diff Diffs = 1;
+}

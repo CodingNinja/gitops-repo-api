@@ -38,7 +38,7 @@ func cloneRepo(ctx context.Context, directory string, isBare bool, opts git.Clon
 		var err error
 		r, err = git.PlainCloneContext(ctx, directory, isBare, &opts)
 		if err != nil {
-			return nil, fmt.Errorf("unable to clone repo %q to %q - %w", opts.URL, directory, err)
+			return nil, fmt.Errorf("unable to clone repo %q @ %q to %q - %w", opts.URL, opts.ReferenceName.String(), directory, err)
 		}
 	}
 

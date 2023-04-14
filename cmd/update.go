@@ -32,10 +32,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// testCmd represents the test command
-var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Test code",
+// updateCmd represents the test command
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update objects matching a selector",
 	Long:  `Test`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		debug := false
@@ -54,10 +54,8 @@ var testCmd = &cobra.Command{
 		}
 
 		branchName := to
-		// Our target is always a branch because you can't merge into a commit obviuosly
-		preRef := plumbing.NewReferenceFromStrings(branchName, from)
+		preRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName(branchName), plumbing.NewHash(from))
 		postRef := plumbing.NewSymbolicReference(preRef.Name(), preRef.Name())
-
 		epds := []entrypoint.EntrypointDiscoverySpec{
 			{
 				Type: "kustomization",
@@ -140,5 +138,5 @@ var testCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(updateCmd)
 }

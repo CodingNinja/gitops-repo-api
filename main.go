@@ -16,7 +16,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 package main
 
-import "git.dmann.xyz/davidmann/gitops-repo-api/cmd"
+import "github.com/codingninja/gitops-repo-api/cmd"
 
 func main() {
 	cmd.Execute()

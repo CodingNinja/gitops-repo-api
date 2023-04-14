@@ -1,0 +1,18 @@
+version: v1
+plugins:
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
+    out: generated
+    opt: paths=source_relative
+  - plugin: buf.build/grpc/go:v1.2.0
+    out: generated
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/bufbuild/validate-go
+    # Make sure to generate your protoc-gen-validate code to the same
+    # directory as protoc-gen-go
+    out: gen/go
+    # You almost always want to set this option with protoc-gen-go
+    opt: paths=source_relative
+  - plugin: buf.build/bufbuild/connect-go
+    out: generated
+    opt: paths=source_relative

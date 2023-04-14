@@ -9,10 +9,10 @@ const (
 )
 
 type Entrypoint struct {
-	Hash      *plumbing.Hash
-	Branch    *plumbing.ReferenceName
-	Name      string
-	Directory string
-	Type      EntrypointType
-	Context   map[string]string
+	Hash      plumbing.Hash          `json:"hash"`
+	Branch    plumbing.ReferenceName `json:"branch"`
+	Name      string                 `json:"name"`
+	Directory string                 `json:"directory"`
+	Type      EntrypointType         `json:"type"`
+	Context   map[string]interface{} `json:"context"`
 }

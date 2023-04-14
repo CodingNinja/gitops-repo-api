@@ -12,7 +12,7 @@ import (
 type EntrypointDiscoverySpec struct {
 	Type    EntrypointType
 	Regex   regexp.Regexp
-	Context map[string]string
+	Context map[string]interface{}
 }
 
 // DiscoverEntrypoints finds all the entrypoints matching the supplied EntrypointDiscoverySpecs
@@ -31,17 +31,20 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				if !ok {
 					name = slug.Make(path[len(directory)+1:])
 				}
-				epctx := s.Context
-				for k, v := range matches {
-					epctx[k] = v
-				}
-
-				entrypoints = append(entrypoints, Entrypoint{
+				ep := Entrypoint{
 					Name:      name,
 					Directory: path[len(filepath.Clean(directory))+1:],
 					Type:      s.Type,
-					Context:   epctx,
-				})
+					Context:   make(map[string]interface{}),
+				}
+				for k, v := range s.Context {
+					ep.Context[k] = v
+				}
+				for k, v := range matches {
+					ep.Context[k] = v
+				}
+
+				entrypoints = append(entrypoints, ep)
 
 				return nil
 			}

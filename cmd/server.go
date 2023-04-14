@@ -18,8 +18,11 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"net"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 // serverCmd represents the server command
@@ -28,7 +31,15 @@ var serverCmd = &cobra.Command{
 	Short: "Start the gRPC server",
 	Long:  `Provides a gRPC Server`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("server called")
+		mode := "grpc"
+		if mode == "grpc" {
+			port, err := cmd.Flags().GetInt("port")
+			if err != nil {
+				return fmt.Errorf("unable to get port - %w", err)
+			}
+
+			return startGrpcServer(port)
+		}
 		return nil
 	},
 }
@@ -44,5 +55,18 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// serverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	serverCmd.Flags().IntP("port", "p", 8080, "Port to expose server on")
+}
+
+func startGrpcServer(port int) error {
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	opts := []grpc.ServerOption{}
+
+	grpcServer := grpc.NewServer(opts...)
+	// RegisterDiffApiServer(grpcServer, server.NewGrpc())
+	return grpcServer.Serve(lis)
 }
