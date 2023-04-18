@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"path"
 	"sync"
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
 	"github.com/codingninja/gitops-repo-api/resource"
 	"github.com/go-git/go-git/v5/plumbing"
-	"sigs.k8s.io/kustomize/api/resmap"
 )
 
 func NewDiffer(rs *git.RepoSpec, epds []entrypoint.EntrypointDiscoverySpec) *repoDiffer {
@@ -46,16 +45,16 @@ func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName
 	}
 
 	defer func() {
-		var errs error
-		if err := os.RemoveAll(preDir); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := os.RemoveAll(postDir); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if errs != nil {
-			panic(errs.Error())
-		}
+		// var errs error
+		// if err := os.RemoveAll(preDir); err != nil {
+		// 	errs = errors.Join(errs, err)
+		// }
+		// if err := os.RemoveAll(postDir); err != nil {
+		// 	errs = errors.Join(errs, err)
+		// }
+		// if errs != nil {
+		// 	panic(errs.Error())
+		// }
 	}()
 
 	eps, err := discoverEntrypoints(ctx, preDir, postDir, rd.epds)
@@ -127,50 +126,15 @@ func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []ent
 }
 
 func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, error) {
-	ewg := sync.WaitGroup{}
-	ewg.Add(1)
-	var preResources *resmap.ResMap
-	var postResources *resmap.ResMap
-	var buildErrs error
-	go func() {
-		defer ewg.Done()
-		pr, err := entrypoint.ExtractResources(preDir, ep)
-		if err != nil {
-			buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build pre-entrypoint - %w", err))
-			return
-		}
-		preResources = &pr
-
-	}()
-
-	ewg.Add(1)
-	go func() {
-		defer ewg.Done()
-		pr, err := entrypoint.ExtractResources(postDir, ep)
-		if err != nil {
-			buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build post-entrypoint - %w", err))
-			return
-		}
-		postResources = &pr
-	}()
-
-	ewg.Wait()
-	if buildErrs != nil && preResources == nil && postResources == nil {
-		return nil, buildErrs
-	}
-	if preResources == nil {
-		rm := resmap.New()
-		preResources = &rm
-	}
-	if postResources == nil {
-		rm := resmap.New()
-		postResources = &rm
-	}
-
-	diff, err := resource.Diff(ctx, rd.rs, ep, *preResources, *postResources)
+	differ, err := resource.EntrypointDiffer(ep)
 	if err != nil {
-		return nil, errors.Join(buildErrs, err)
+		return nil, fmt.Errorf("unable to get differ for entrypoint - %w", err)
 	}
 
-	return diff, buildErrs
+	diff, err := differ.Diff(ctx, rd.rs, ep, path.Join(preDir, ep.Directory), path.Join(postDir, ep.Directory))
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract entrypoint diff - %w", err)
+	}
+
+	return diff, nil
 }

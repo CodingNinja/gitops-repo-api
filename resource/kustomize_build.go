@@ -1,8 +1,9 @@
-package entrypoint
+package resource
 
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
@@ -12,10 +13,13 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-func RenderKustomize(kustfile string) (resmap.ResMap, error) {
+const KustomizationFileSuffix = "kustomization.yaml"
+
+func RenderKustomize(kustomizeDir string) (resmap.ResMap, error) {
 	opts := krusty.MakeDefaultOptions()
 	pc := types.EnabledPluginConfig(types.BploLoadFromFileSys)
 	pc.HelmConfig.Command = "helm"
+	kustfile := path.Join(kustomizeDir, KustomizationFileSuffix)
 
 	opts.PluginConfig = pc
 	k := krusty.MakeKustomizer(opts)

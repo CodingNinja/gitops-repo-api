@@ -58,10 +58,10 @@ var updateCmd = &cobra.Command{
 		postRef := plumbing.NewSymbolicReference(preRef.Name(), preRef.Name())
 		epds := []entrypoint.EntrypointDiscoverySpec{
 			{
-				Type: "kustomization",
-				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
-				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
-				Context: map[string]string{
+				Type: entrypoint.EntrypointTypeKustomize,
+				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/`),
+				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)`),
+				Context: map[string]interface{}{
 					"name": "k8-workshop",
 				},
 			},

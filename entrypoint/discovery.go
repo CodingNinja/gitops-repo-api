@@ -12,6 +12,7 @@ import (
 type EntrypointDiscoverySpec struct {
 	Type    EntrypointType
 	Regex   regexp.Regexp
+	Files   bool
 	Context map[string]interface{}
 }
 
@@ -21,27 +22,35 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 	directory = path.Clean(directory)
 	entrypoints := []Entrypoint{}
 	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		}
-
 		for _, s := range specs {
+			if !d.IsDir() && !s.Files {
+				continue
+			}
 			if matches, ok := regexNamedMatches(path, s.Regex); ok {
-				name, ok := matches["name"]
+				epctx := make(map[string]interface{})
+				for k, v := range s.Context {
+					epctx[k] = v
+				}
+				for k, v := range matches {
+					epctx[k] = v
+				}
+
+				name := ""
+				if n, ok := epctx["name"]; ok {
+					if ns, ok := n.(string); ok {
+						name = ns
+					}
+				}
+
 				if !ok {
 					name = slug.Make(path[len(directory)+1:])
 				}
+
 				ep := Entrypoint{
 					Name:      name,
 					Directory: path[len(filepath.Clean(directory))+1:],
 					Type:      s.Type,
-					Context:   make(map[string]interface{}),
-				}
-				for k, v := range s.Context {
-					ep.Context[k] = v
-				}
-				for k, v := range matches {
-					ep.Context[k] = v
+					Context:   epctx,
 				}
 
 				entrypoints = append(entrypoints, ep)
@@ -63,17 +72,17 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 // regexNamedMatches Returns a map of named capture => value
 func regexNamedMatches(str string, regex regexp.Regexp) (map[string]string, bool) {
 	match := regex.FindStringSubmatch(str)
-	result := make(map[string]string)
 
-	if len(match) == 0 {
+	if match == nil {
 		return nil, false
 	}
 
+	result := make(map[string]string)
 	for i, name := range regex.SubexpNames() {
 		if i != 0 && name != "" {
 			result[name] = match[i]
 		}
 	}
 
-	return result, len(result) > 0
+	return result, true
 }

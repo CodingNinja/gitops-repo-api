@@ -1,17 +1,13 @@
 package entrypoint
 
-import (
-	"fmt"
-	"path/filepath"
+// func ExtractResources(root string, entrypoint Entrypoint) (interface{}, error) {
+// 	if entrypoint.Type == EntrypointTypeKustomize {
+// 		return resource.RenderKustomize(filepath.Join(root, entrypoint.Directory))
+// 	}
 
-	"sigs.k8s.io/kustomize/api/resmap"
-)
+// 	if entrypoint.Type == EntrypointTypeTerraform {
+// 		return resource.RenderTerraform(filepath.Join(root, entrypoint.Directory))
+// 	}
 
-func ExtractResources(root string, entrypoint Entrypoint) (resmap.ResMap, error) {
-	if entrypoint.Type == EntrypointTypeKustomize {
-		return RenderKustomize(filepath.Join(root, entrypoint.Directory))
-	}
-
-	return nil, fmt.Errorf("unknown entrypoint %+v", entrypoint)
-
-}
+// 	return nil, fmt.Errorf("unable to extract resources from unknown entrypoint type %q", entrypoint.Type)
+// }

@@ -60,9 +60,9 @@ var testCmd = &cobra.Command{
 
 		epds := []entrypoint.EntrypointDiscoverySpec{
 			{
-				Type: "kustomization",
-				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
-				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
+				Type: entrypoint.EntrypointTypeKustomize,
+				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/`),
+				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)`),
 				Context: map[string]string{
 					"name": "k8-workshop",
 				},
