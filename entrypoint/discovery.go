@@ -10,10 +10,10 @@ import (
 )
 
 type EntrypointDiscoverySpec struct {
-	Type    EntrypointType
-	Regex   regexp.Regexp
-	Files   bool
-	Context map[string]interface{}
+	Type    EntrypointType         `json:"type"`
+	Regex   regexp.Regexp          `json:"regex"`
+	Files   bool                   `json:"files"`
+	Context map[string]interface{} `json:"context"`
 }
 
 // DiscoverEntrypoints finds all the entrypoints matching the supplied EntrypointDiscoverySpecs

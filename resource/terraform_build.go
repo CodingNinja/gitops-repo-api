@@ -15,20 +15,21 @@ import (
 var execPath = ""
 
 func init() {
+	go func() {
+		installer := &releases.ExactVersion{
+			Product:    product.Terraform,
+			Version:    version.Must(version.NewVersion("1.0.6")),
+			InstallDir: "/tmp",
+		}
 
-	installer := &releases.ExactVersion{
-		Product:    product.Terraform,
-		Version:    version.Must(version.NewVersion("1.0.6")),
-		InstallDir: "/tmp",
-	}
-
-	fmt.Println("installing terraform")
-	path, err := installer.Install(context.Background())
-	if err != nil {
-		panic(fmt.Errorf("error installing Terraform: %s", err))
-	}
-	execPath = path
-	fmt.Println("installed terraform to ", execPath)
+		fmt.Println("installing terraform")
+		path, err := installer.Install(context.Background())
+		if err != nil {
+			panic(fmt.Errorf("error installing Terraform: %s", err))
+		}
+		execPath = path
+		fmt.Println("installed terraform to ", execPath)
+	}()
 }
 
 func RenderTerraform(workingDir string) (*tfjson.Plan, error) {
