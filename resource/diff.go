@@ -68,5 +68,8 @@ func EntrypointDiffer(ep entrypoint.Entrypoint) (ResourceDiffer, error) {
 	if ep.Type == entrypoint.EntrypointTypeTerraform {
 		return &tfDiffer{}, nil
 	}
+	if ep.Type == entrypoint.EntrypointTypeCloudformation {
+		return &cfnDiffer{}, nil
+	}
 	return nil, fmt.Errorf("entrypoint type %q is not supported", ep.Type)
 }
