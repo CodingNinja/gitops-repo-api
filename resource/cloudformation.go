@@ -32,7 +32,6 @@ func (kr *CloudformationResource) Type() string {
 }
 
 func (kr *CloudformationResource) Identifier() string {
-
 	return fmt.Sprintf("%s[%s]", kr.Resource.Type, kr.Name())
 }
 
@@ -91,6 +90,10 @@ func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.E
 	diff := []ResourceDiff{}
 	for name, res := range new.Resources {
 		if oldRes, ok := old.Resources[name]; !ok {
+			rDiff, err := cfnDiffResource(nil, res)
+			if err != nil {
+				return nil, fmt.Errorf("unable to diff resources - %w", err)
+			}
 
 			rd := ResourceDiff{
 				Type: DiffTypeCreate,
@@ -99,11 +102,11 @@ func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.E
 					ResName:  name,
 					Resource: res,
 				},
-				Diff: r3diff.Changelog{},
+				Diff: rDiff,
 			}
 			diff = append(diff, rd)
 		} else {
-			rDiff, err := cfnDiffResource(res, oldRes)
+			rDiff, err := cfnDiffResource(oldRes, res)
 			if err != nil {
 				return nil, fmt.Errorf("unable to diff resources - %w", err)
 			}
@@ -127,6 +130,10 @@ func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.E
 
 	for name, res := range old.Resources {
 		if _, ok := new.Resources[name]; !ok {
+			rDiff, err := cfnDiffResource(res, nil)
+			if err != nil {
+				return nil, fmt.Errorf("unable to diff resources - %w", err)
+			}
 
 			rd := ResourceDiff{
 				Type: DiffTypeDelete,
@@ -134,7 +141,7 @@ func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.E
 					ResName:  name,
 					Resource: res,
 				},
-				Diff: r3diff.Changelog{},
+				Diff: rDiff,
 			}
 			diff = append(diff, rd)
 		}
