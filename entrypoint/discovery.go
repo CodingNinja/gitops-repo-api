@@ -31,7 +31,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 			if !d.IsDir() && !s.Files {
 				continue
 			}
-			if matches, ok := regexNamedMatches(path, s.Regex); ok {
+			if matches, ok := regexNamedMatches(realpath, s.Regex); ok {
 				epctx := make(map[string]interface{})
 				for k, v := range s.Context {
 					epctx[k] = v
