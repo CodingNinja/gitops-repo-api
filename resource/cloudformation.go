@@ -33,7 +33,7 @@ func (kr *CloudformationResource) Type() string {
 
 func (kr *CloudformationResource) Identifier() string {
 
-	return fmt.Sprintf("%s[%s]", kr.Resource, kr.Name())
+	return fmt.Sprintf("%s[%s]", kr.Resource.Type, kr.Name())
 }
 
 func (kr *CloudformationResource) Name() string {
