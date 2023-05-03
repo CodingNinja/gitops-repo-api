@@ -63,7 +63,7 @@ var testCmd = &cobra.Command{
 				Type: entrypoint.EntrypointTypeKustomize,
 				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/`),
 				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)`),
-				Context: map[string]string{
+				Context: map[string]interface{}{
 					"name": "k8-workshop",
 				},
 			},

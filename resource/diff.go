@@ -59,6 +59,8 @@ func (rd *ResourceDiff) String() string {
 
 type ResourceDiffer interface {
 	Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error)
+	// TODO: Implement this so that we can iterate all objects, not just all changes
+	// Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error)
 }
 
 func EntrypointDiffer(ep entrypoint.Entrypoint) (ResourceDiffer, error) {

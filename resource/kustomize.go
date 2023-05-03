@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 
@@ -11,15 +12,77 @@ import (
 	"github.com/codingninja/gitops-repo-api/git"
 	r3diff "github.com/r3labs/diff/v3"
 	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/resource"
+	"sigs.k8s.io/kustomize/api/types"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
+
+const KustomizationFileSuffix = "kustomization.yaml"
+
+type KustomizeResource struct {
+	Resource *resource.Resource `json:"resource"`
+	Origin   resource.Origin    `json:"origin"`
+}
+
+func (kr *KustomizeResource) Type() string {
+	return string(entrypoint.EntrypointTypeKustomize)
+}
+func (kr *KustomizeResource) Identifier() string {
+	return fmt.Sprintf("%s[%s]", kr.Resource.GetGvk().String(), kr.Name())
+}
+
+func (kr *KustomizeResource) Name() string {
+	ns := kr.Resource.GetNamespace()
+	name := kr.Resource.GetName()
+	if ns == "" {
+		return name
+	}
+
+	return fmt.Sprintf("%s/%s", ns, name)
+}
+
+func RenderKustomize(kustomizeDir string) (resmap.ResMap, error) {
+	opts := krusty.MakeDefaultOptions()
+	pc := types.EnabledPluginConfig(types.BploLoadFromFileSys)
+	pc.HelmConfig.Command = "helm"
+	kustfile := path.Join(kustomizeDir, KustomizationFileSuffix)
+
+	opts.PluginConfig = pc
+	k := krusty.MakeKustomizer(opts)
+
+	kustomization, err := os.ReadFile(kustfile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read kustomization - %w", err)
+	}
+	kust := &types.Kustomization{}
+	if err := yaml.Unmarshal(kustomization, kust); err != nil {
+		return nil, fmt.Errorf("unable to parse kustomization - %w", err)
+	}
+	kust.BuildMetadata = append(kust.BuildMetadata, "originAnnotations")
+	kustomization, err = yaml.Marshal(kust)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal - %w", err)
+	}
+	if err := os.WriteFile(kustfile, kustomization, 0777); err != nil {
+		return nil, fmt.Errorf("unable to write new kustomization - %w", err)
+	}
+
+	resmap, err := k.Run(filesys.MakeFsOnDisk(), filepath.Dir(kustfile))
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to build entrypoint with  kustomize - %w", err)
+	}
+
+	return resmap, nil
+}
 
 type kubeDiffer struct {
 }
 
 func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error) {
-	o, n, err := extractConcurrent[resmap.ResMap](ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
+	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
 		return RenderKustomize(dir)
 	})
 
@@ -27,22 +90,12 @@ func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.
 		return nil, err
 	}
 
-	if o == nil {
-		o = resmap.New()
+	if old == nil {
+		old = resmap.New()
 	}
 
-	if n == nil {
-		n = resmap.New()
-	}
-
-	old, ok := o.(resmap.ResMap)
-	if !ok {
-		return nil, fmt.Errorf("invalid resmap received")
-	}
-
-	new, ok := n.(resmap.ResMap)
-	if !ok {
-		return nil, fmt.Errorf("invalid resmap received")
+	if new == nil {
+		new = resmap.New()
 	}
 
 	diff := []ResourceDiff{}
