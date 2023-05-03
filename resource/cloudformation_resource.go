@@ -3,13 +3,12 @@ package resource
 import (
 	"fmt"
 
-	"github.com/awslabs/goformation/v7/cloudformation"
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 )
 
 type CloudformationResource struct {
-	ResName  string                  `json:"string"`
-	Resource cloudformation.Resource `json:"resource"`
+	ResName  string      `json:"string"`
+	Resource interface{} `json:"resource"`
 }
 
 func (kr *CloudformationResource) Type() string {
