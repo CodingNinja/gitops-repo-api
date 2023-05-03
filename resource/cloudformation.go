@@ -46,7 +46,7 @@ type CloudformationTemplate struct {
 	Transform                *cloudformation.Transform `json:"Transform,omitempty"`
 	Description              string                    `json:"Description,omitempty" yaml:"Description"`
 	Metadata                 map[string]interface{}    `json:"Metadata,omitempty" yaml:"Metadata"`
-	Parameters               cloudformation.Parameters `json:"Parameters,omitempty" yaml:"Parameters"`
+	Parameters               map[string]interface{}    `json:"Parameters,omitempty" yaml:"Parameters"`
 	Mappings                 map[string]interface{}    `json:"Mappings,omitempty" yaml:"Mappings"`
 	Conditions               map[string]interface{}    `json:"Conditions,omitempty" yaml:"Conditions"`
 	Resources                map[string]cfnResource    `json:"Resources,omitempty" yaml:"Resources"`
