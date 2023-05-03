@@ -26,11 +26,12 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 	directory = path.Clean(directory)
 	entrypoints := []Entrypoint{}
 	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+		realpath := path[len(directory)+1:]
 		for _, s := range specs {
 			if !d.IsDir() && !s.Files {
 				continue
 			}
-			if matches, ok := regexNamedMatches(path, s.Regex); ok {
+			if matches, ok := regexNamedMatches(realpath, s.Regex); ok {
 				epctx := make(map[string]interface{})
 				for k, v := range s.Context {
 					epctx[k] = v
@@ -47,7 +48,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				}
 
 				if !ok {
-					name = slug.Make(path[len(directory)+1:])
+					name = slug.Make(realpath)
 				}
 				epType := s.Type
 				if ctxType, ok := epctx["type"]; ok && epType == "" {
