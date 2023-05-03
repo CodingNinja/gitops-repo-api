@@ -45,11 +45,17 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				if !ok {
 					name = slug.Make(path[len(directory)+1:])
 				}
+				epType := s.Type
+				if ctxType, ok := epctx["type"]; ok && epType == "" {
+					if ctxTypeStr, ok := ctxType.(string); ok {
+						epType = EntrypointType(ctxTypeStr)
+					}
+				}
 
 				ep := Entrypoint{
 					Name:      name,
 					Directory: path[len(filepath.Clean(directory))+1:],
-					Type:      s.Type,
+					Type:      epType,
 					Context:   epctx,
 				}
 

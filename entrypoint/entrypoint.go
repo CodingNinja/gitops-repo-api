@@ -5,10 +5,11 @@ import "github.com/go-git/go-git/v5/plumbing"
 type EntrypointType string
 
 const (
-	EntrypointTypeKustomize EntrypointType = "kustomize"
-	EntrypointTypeTerraform EntrypointType = "terraform"
-	EntrypointTypeHclV1     EntrypointType = "hclv1"
-	EntrypointTypeHclV2     EntrypointType = "hclv2"
+	EntrypointTypeKustomize      EntrypointType = "kustomize"
+	EntrypointTypeCloudformation EntrypointType = "cloudformation"
+	EntrypointTypeTerraform      EntrypointType = "terraform"
+	EntrypointTypeHclV1          EntrypointType = "hclv1"
+	EntrypointTypeHclV2          EntrypointType = "hclv2"
 )
 
 type Entrypoint struct {

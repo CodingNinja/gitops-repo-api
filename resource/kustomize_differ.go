@@ -19,7 +19,7 @@ type kubeDiffer struct {
 }
 
 func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error) {
-	o, n, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (interface{}, error) {
+	o, n, err := extractConcurrent[resmap.ResMap](ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
 		return RenderKustomize(dir)
 	})
 

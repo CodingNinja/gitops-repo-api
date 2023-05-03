@@ -8,14 +8,14 @@ import (
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 )
 
-type ResourceExtractor func(dir string, ep entrypoint.Entrypoint) (interface{}, error)
+type ResourceExtractor[T any] func(dir string, ep entrypoint.Entrypoint) (T, error)
 
-func extractConcurrent(ep entrypoint.Entrypoint, preDir string, postDir string, extract ResourceExtractor) (interface{}, interface{}, error) {
+func extractConcurrent[T any](ep entrypoint.Entrypoint, preDir string, postDir string, extract ResourceExtractor[T]) (T, T, error) {
 
 	ewg := sync.WaitGroup{}
 	ewg.Add(1)
-	var preResources interface{}
-	var postResources interface{}
+	var preResources T
+	var postResources T
 	var buildErrs error
 	go func() {
 		defer ewg.Done()
@@ -40,9 +40,6 @@ func extractConcurrent(ep entrypoint.Entrypoint, preDir string, postDir string, 
 	}()
 
 	ewg.Wait()
-	if buildErrs != nil && preResources == nil && postResources == nil {
-		return nil, nil, buildErrs
-	}
 
-	return preResources, postResources, nil
+	return preResources, postResources, buildErrs
 }

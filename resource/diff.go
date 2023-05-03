@@ -41,6 +41,7 @@ func (rd *ResourceDiff) Identifier() string {
 
 	return "unknown"
 }
+
 func (rd *ResourceDiff) Name() string {
 	if rd.Post != nil {
 		return rd.Post.Name()
@@ -51,6 +52,7 @@ func (rd *ResourceDiff) Name() string {
 
 	return "unknown"
 }
+
 func (rd *ResourceDiff) String() string {
 	return fmt.Sprintf("%s[%s]", rd.Identifier(), rd.Name())
 }
