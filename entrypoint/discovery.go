@@ -105,9 +105,9 @@ func isValidEntrypoint(path string, epType EntrypointType) bool {
 
 			return tpl.AWSTemplateFormatVersion != ""
 		}
-
 	}
-	return true
+
+	return epType == EntrypointTypeTerraform || epType == EntrypointTypeKustomize
 }
 
 // regexNamedMatches Returns a map of named capture => value
