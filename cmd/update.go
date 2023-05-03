@@ -53,9 +53,8 @@ var updateCmd = &cobra.Command{
 			rs.Progress = os.Stdout
 		}
 
-		branchName := to
-		preRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName(branchName), plumbing.NewHash(from))
-		postRef := plumbing.NewSymbolicReference(preRef.Name(), preRef.Name())
+		preRef := plumbing.NewBranchReferenceName(to)
+		postRef := plumbing.NewBranchReferenceName(from)
 		epds := []entrypoint.EntrypointDiscoverySpec{
 			{
 				Type: entrypoint.EntrypointTypeKustomize,
@@ -66,7 +65,7 @@ var updateCmd = &cobra.Command{
 				},
 			},
 		}
-		differ := diff.NewDiffer(rs, epds)
+		differ := diff.NewDiffer(rs, rs, epds)
 		diff, err := differ.Diff(ctx, preRef, postRef)
 		if err != nil {
 			fmt.Printf("Got errors diffing resources:\n\n%s\n", err.Error())

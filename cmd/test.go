@@ -53,10 +53,9 @@ var testCmd = &cobra.Command{
 			rs.Progress = os.Stdout
 		}
 
-		branchName := to
 		// Our target is always a branch because you can't merge into a commit obviuosly
-		preRef := plumbing.NewReferenceFromStrings(branchName, from)
-		postRef := plumbing.NewSymbolicReference(preRef.Name(), preRef.Name())
+		preRef := plumbing.NewBranchReferenceName(to)
+		postRef := plumbing.NewBranchReferenceName(from)
 
 		epds := []entrypoint.EntrypointDiscoverySpec{
 			{
@@ -68,7 +67,7 @@ var testCmd = &cobra.Command{
 				},
 			},
 		}
-		differ := diff.NewDiffer(rs, epds)
+		differ := diff.NewDiffer(rs, rs, epds)
 		diff, err := differ.Diff(ctx, preRef, postRef)
 		if err != nil {
 			fmt.Printf("Got errors diffing resources:\n\n%s\n", err.Error())

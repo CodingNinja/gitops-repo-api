@@ -13,16 +13,18 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
-func NewDiffer(rs *git.RepoSpec, epds []entrypoint.EntrypointDiscoverySpec) *repoDiffer {
+func NewDiffer(preRs *git.RepoSpec, postRs *git.RepoSpec, epds []entrypoint.EntrypointDiscoverySpec) *repoDiffer {
 	return &repoDiffer{
-		rs:   rs,
-		epds: epds,
+		preRs:  preRs,
+		postRs: postRs,
+		epds:   epds,
 	}
 }
 
 type repoDiffer struct {
-	rs   *git.RepoSpec
-	epds []entrypoint.EntrypointDiscoverySpec
+	preRs  *git.RepoSpec
+	postRs *git.RepoSpec
+	epds   []entrypoint.EntrypointDiscoverySpec
 }
 
 type EntrypointDiff struct {
@@ -34,12 +36,12 @@ type EntrypointDiff struct {
 // Diff will return either an EntrypointDiff, or an Error for every Entrypoint that is discovered in the
 // pre
 func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName) ([]EntrypointDiff, error) {
-	_, preDir, err := rd.rs.Checkout(ctx, pre)
+	_, preDir, err := rd.preRs.Checkout(ctx, pre)
 	if err != nil {
 		return nil, fmt.Errorf("unable to pre change dir - %w", err)
 	}
 
-	_, postDir, err := rd.rs.Checkout(ctx, post)
+	_, postDir, err := rd.postRs.Checkout(ctx, post)
 	if err != nil {
 		return nil, fmt.Errorf("unable to checkout post change dir - %w", err)
 	}
@@ -131,7 +133,7 @@ func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoi
 		return nil, fmt.Errorf("unable to get differ for entrypoint - %w", err)
 	}
 
-	diff, err := differ.Diff(ctx, rd.rs, ep, path.Join(preDir, ep.Directory), path.Join(postDir, ep.Directory))
+	diff, err := differ.Diff(ctx, rd.preRs, ep, path.Join(preDir, ep.Directory), path.Join(postDir, ep.Directory))
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract entrypoint diff - %w", err)
 	}
