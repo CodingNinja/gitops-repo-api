@@ -47,9 +47,11 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 					}
 				}
 
-				if !ok {
-					name = slug.Make(realpath)
+				if name == "" {
+					name = realpath
 				}
+
+				name = slug.Make(name)
 				epType := s.Type
 				if ctxType, ok := epctx["type"]; ok && epType == "" {
 					if ctxTypeStr, ok := ctxType.(string); ok {
@@ -92,7 +94,7 @@ func isValidEntrypoint(path string, epType EntrypointType) bool {
 	if epType == EntrypointTypeCloudformation {
 		content, err := os.ReadFile(path)
 		tpl := &cfnMinimalTemplate{}
-		if err != nil {
+		if err == nil {
 			if strings.Contains(path, ".json") {
 				if err := json.Unmarshal(content, tpl); err != nil {
 					return false
