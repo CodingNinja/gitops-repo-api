@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/awslabs/goformation/v7/cloudformation"
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
 	r3diff "github.com/r3labs/diff/v3"
@@ -15,9 +16,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type cfnResource struct {
+	Type       string                 `json:"Type" yaml:"Type"`
+	Properties map[string]interface{} `json:"Properties" yaml:"Properties"`
+	Metadata   map[string]interface{} `json:"Metadata" yaml:"Metadata"`
+}
+
 type CloudformationResource struct {
 	ResName  string      `json:"string"`
-	Resource interface{} `json:"resource"`
+	Resource cfnResource `json:"resource"`
 }
 
 func (kr *CloudformationResource) Type() string {
@@ -25,6 +32,7 @@ func (kr *CloudformationResource) Type() string {
 }
 
 func (kr *CloudformationResource) Identifier() string {
+
 	return fmt.Sprintf("%s[%s]", kr.Resource, kr.Name())
 }
 
@@ -34,15 +42,16 @@ func (kr *CloudformationResource) Name() string {
 
 // Unfortunately, the CFN golang library can't be used because we don't want to bork on version mismatch
 type CloudformationTemplate struct {
-	AWSTemplateFormatVersion string                 `json:"AWSTemplateFormatVersion,omitempty" yaml:"AWSTemplateFormatVersion"`
-	Description              string                 `json:"Description,omitempty" yaml:"Description"`
-	Metadata                 map[string]interface{} `json:"Metadata,omitempty" yaml:"Metadata"`
-	Parameters               map[string]interface{} `json:"Parameters,omitempty" yaml:"Parameters"`
-	Mappings                 map[string]interface{} `json:"Mappings,omitempty" yaml:"Mappings"`
-	Conditions               map[string]interface{} `json:"Conditions,omitempty" yaml:"Conditions"`
-	Resources                map[string]interface{} `json:"Resources,omitempty" yaml:"Resources"`
-	Outputs                  map[string]interface{} `json:"Outputs,omitempty" yaml:"Outputs"`
-	Globals                  map[string]interface{} `json:"Globals,omitempty" yaml:"Globals"`
+	AWSTemplateFormatVersion string                    `json:"AWSTemplateFormatVersion,omitempty" yaml:"AWSTemplateFormatVersion"`
+	Transform                *cloudformation.Transform `json:"Transform,omitempty"`
+	Description              string                    `json:"Description,omitempty" yaml:"Description"`
+	Metadata                 map[string]interface{}    `json:"Metadata,omitempty" yaml:"Metadata"`
+	Parameters               cloudformation.Parameters `json:"Parameters,omitempty" yaml:"Parameters"`
+	Mappings                 map[string]interface{}    `json:"Mappings,omitempty" yaml:"Mappings"`
+	Conditions               map[string]interface{}    `json:"Conditions,omitempty" yaml:"Conditions"`
+	Resources                map[string]cfnResource    `json:"Resources,omitempty" yaml:"Resources"`
+	Outputs                  cloudformation.Outputs    `json:"Outputs,omitempty" yaml:"Outputs"`
+	Globals                  map[string]interface{}    `json:"Globals,omitempty" yaml:"Globals"`
 }
 
 func RenderCloudformation(cfnFile string) (*CloudformationTemplate, error) {

@@ -3,6 +3,7 @@ module github.com/codingninja/gitops-repo-api
 go 1.20
 
 require (
+	github.com/aws/aws-sdk-go v1.44.255
 	github.com/bufbuild/connect-go v1.6.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/google/uuid v1.3.0
@@ -26,6 +27,7 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230411080316-8b3893ee7fca // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/awslabs/goformation/v7 v7.7.5 // indirect
 	github.com/cloudflare/circl v1.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -48,6 +50,7 @@ require (
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
