@@ -7,6 +7,7 @@ type EntrypointType string
 const (
 	EntrypointTypeKustomize      EntrypointType = "kustomize"
 	EntrypointTypeCloudformation EntrypointType = "cloudformation"
+	EntrypointTypeCdk            EntrypointType = "cdk"
 	EntrypointTypeTerraform      EntrypointType = "terraform"
 	EntrypointTypeHclV1          EntrypointType = "hclv1"
 	EntrypointTypeHclV2          EntrypointType = "hclv2"

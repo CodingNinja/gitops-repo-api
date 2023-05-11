@@ -59,19 +59,19 @@ func (rd *ResourceDiff) String() string {
 
 type ResourceDiffer interface {
 	Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error)
-	// TODO: Implement this so that we can iterate all objects, not just all changes
-	// Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error)
 }
 
 func EntrypointDiffer(ep entrypoint.Entrypoint) (ResourceDiffer, error) {
-	if ep.Type == entrypoint.EntrypointTypeKustomize {
+	switch ep.Type {
+	case entrypoint.EntrypointTypeKustomize:
 		return &kubeDiffer{}, nil
-	}
-	if ep.Type == entrypoint.EntrypointTypeTerraform {
+	case entrypoint.EntrypointTypeTerraform:
 		return &tfDiffer{}, nil
-	}
-	if ep.Type == entrypoint.EntrypointTypeCloudformation {
+	case entrypoint.EntrypointTypeCloudformation:
 		return &cfnDiffer{}, nil
+	case entrypoint.EntrypointTypeCdk:
+		return &cdkDiffer{}, nil
+	default:
+		return nil, fmt.Errorf("entrypoint type %q is not supported", ep.Type)
 	}
-	return nil, fmt.Errorf("entrypoint type %q is not supported", ep.Type)
 }

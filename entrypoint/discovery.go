@@ -2,6 +2,7 @@ package entrypoint
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -27,6 +28,9 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 	entrypoints := []Entrypoint{}
 	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
 		realpath := strings.TrimLeft(path[len(directory):], "/")
+		if len(realpath) >= 4 && realpath[0:4] == ".git" {
+			return nil
+		}
 		for _, s := range specs {
 			if !d.IsDir() && !s.Files {
 				continue
@@ -60,6 +64,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				}
 
 				if !isValidEntrypoint(path, epType) {
+					fmt.Printf("%s is not a valid entrypoint\n", path)
 					return nil
 				}
 
@@ -90,12 +95,12 @@ type cfnMinimalTemplate struct {
 	AWSTemplateFormatVersion string `json:"AWSTemplateFormatVersion" yaml:"AWSTemplateFormatVersion"`
 }
 
-func isValidEntrypoint(path string, epType EntrypointType) bool {
+func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 	if epType == EntrypointTypeCloudformation {
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(epPath)
 		tpl := &cfnMinimalTemplate{}
 		if err == nil {
-			if strings.Contains(path, ".json") {
+			if strings.Contains(epPath, ".json") {
 				if err := json.Unmarshal(content, tpl); err != nil {
 					return false
 				}
@@ -106,6 +111,12 @@ func isValidEntrypoint(path string, epType EntrypointType) bool {
 			}
 
 			return tpl.AWSTemplateFormatVersion != ""
+		}
+	}
+
+	if epType == EntrypointTypeCdk {
+		if stat, err := os.Stat(path.Join(epPath, "cdk.json")); err == nil && stat != nil {
+			return true
 		}
 	}
 
