@@ -23,7 +23,7 @@ type cfnResource struct {
 }
 
 type CloudformationResource struct {
-	ResName  string      `json:"string"`
+	ResName  string      `json:"resName"`
 	Resource cfnResource `json:"resource"`
 }
 

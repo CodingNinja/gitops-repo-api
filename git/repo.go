@@ -70,7 +70,7 @@ func (rs *RepoSpec) Checkout(ctx context.Context, reference plumbing.ReferenceNa
 	// in the local base repo to match the latest fetched origin hash
 	cur, err := repo.ResolveRevision(plumbing.Revision(plumbing.NewRemoteReferenceName("origin", reference.Short())))
 	if err != nil {
-		return nil, "", fmt.Errorf("error opening repo %q - %w", rs.URL, err)
+		return nil, "", fmt.Errorf("error resolving repo reference %q %q - %w", rs.URL, reference, err)
 	}
 
 	if err := repo.Storer.SetReference(plumbing.NewHashReference(reference, *cur)); err != nil {
