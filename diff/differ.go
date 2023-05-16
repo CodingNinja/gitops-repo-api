@@ -183,5 +183,5 @@ func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoi
 		return nil, fmt.Errorf("unable to extract entrypoint diff - %w", err)
 	}
 
-	return diff, err
+	return diff, nil
 }

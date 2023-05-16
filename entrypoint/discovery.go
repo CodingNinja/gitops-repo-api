@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gosimple/slug"
 	"gopkg.in/yaml.v3"
 )
@@ -43,6 +44,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				for k, v := range matches {
 					epctx[k] = v
 				}
+				spew.Dump(realpath, s.Regex.String())
 
 				name := ""
 				if n, ok := epctx["name"]; ok {
@@ -116,6 +118,12 @@ func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 
 	if epType == EntrypointTypeCdk {
 		if stat, err := os.Stat(path.Join(epPath, "cdk.json")); err == nil && stat != nil {
+			return true
+		}
+	}
+
+	if epType == EntrypointTypeKustomize {
+		if stat, err := os.Stat(path.Join(epPath, "kustomization.yaml")); err == nil && stat != nil {
 			return true
 		}
 	}

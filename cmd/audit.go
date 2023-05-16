@@ -32,10 +32,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// testCmd represents the test command
-var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Test code",
+// auditCmd represents the test command
+var auditCmd = &cobra.Command{
+	Use:   "audit",
+	Short: "Run the validator",
 	Long:  `Test`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		debug := false
@@ -43,8 +43,7 @@ var testCmd = &cobra.Command{
 			return fmt.Errorf("invalid arguments, expected 3, got %+v", args)
 		}
 		repo := args[0]
-		from := args[1]
-		to := args[2]
+		ref := args[1]
 		ctx := context.Background()
 
 		rs := git.NewRepoSpec(repo, nil)
@@ -54,8 +53,7 @@ var testCmd = &cobra.Command{
 		}
 
 		// Our target is always a branch because you can't merge into a commit obviuosly
-		preRef := plumbing.NewBranchReferenceName(to)
-		postRef := plumbing.NewBranchReferenceName(from)
+		auditRef := plumbing.NewBranchReferenceName(ref)
 
 		epds := []entrypoint.EntrypointDiscoverySpec{
 			{
@@ -68,7 +66,7 @@ var testCmd = &cobra.Command{
 			},
 		}
 		differ := diff.NewDiffer(rs, rs, epds)
-		diff, err := differ.Diff(ctx, preRef, postRef)
+		diff, err := differ.Extract(ctx, auditRef)
 		if err != nil {
 			fmt.Printf("Got errors diffing resources:\n\n%s\n", err.Error())
 		}
@@ -139,5 +137,5 @@ var testCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(auditCmd)
 }
