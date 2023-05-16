@@ -35,6 +35,43 @@ type EntrypointDiff struct {
 
 // Diff will return either an EntrypointDiff, or an Error for every Entrypoint that is discovered in the
 // pre
+func (rd *repoDiffer) Extract(ctx context.Context, ref plumbing.ReferenceName) ([]EntrypointDiff, error) {
+	_, dir, err := rd.preRs.Checkout(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("unable to pre change dir - %w", err)
+	}
+
+	eps, err := discoverEntrypoints(ctx, "", dir, rd.epds)
+	if err != nil {
+		return nil, err
+	}
+	var errs error
+	allDiff := []EntrypointDiff{}
+	wg := sync.WaitGroup{}
+	for _, ep := range eps {
+		ep := ep
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			diff, err := rd.diffEntrypoint(ctx, ep.ep, "", dir)
+			if err != nil {
+				errs = errors.Join(errs, err)
+			}
+
+			allDiff = append(allDiff, EntrypointDiff{
+				Entrypoint: ep.ep,
+				Diff:       diff,
+				Error:      err,
+			})
+		}()
+	}
+
+	wg.Wait()
+
+	return allDiff, errs
+}
+
 func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName) ([]EntrypointDiff, error) {
 	_, preDir, err := rd.preRs.Checkout(ctx, pre)
 	if err != nil {
@@ -100,15 +137,23 @@ type internalentrypoint struct {
 
 func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []entrypoint.EntrypointDiscoverySpec) ([]internalentrypoint, error) {
 	// This should be re-implemented to use channels
-	preEps, err := entrypoint.DiscoverEntrypoints(preDir, epds)
+	var preEps []entrypoint.Entrypoint
+	if preDir != "" {
+		preEpss, err := entrypoint.DiscoverEntrypoints(preDir, epds)
+		if err != nil {
+			return nil, err
+		}
 
-	if err != nil {
-		return nil, err
+		preEps = preEpss
 	}
-	postEps, err := entrypoint.DiscoverEntrypoints(postDir, epds)
+	var postEps []entrypoint.Entrypoint
+	if postDir != "" {
+		postEpss, err := entrypoint.DiscoverEntrypoints(postDir, epds)
+		if err != nil {
+			return nil, err
+		}
 
-	if err != nil {
-		return nil, err
+		postEps = postEpss
 	}
 	eps := map[string]bool{}
 	eplist := []internalentrypoint{}
