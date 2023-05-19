@@ -58,7 +58,7 @@ func (rd *ResourceDiff) String() string {
 }
 
 type ResourceDiffer interface {
-	Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error)
+	Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error)
 }
 
 func EntrypointDiffer(ep entrypoint.Entrypoint) (ResourceDiffer, error) {

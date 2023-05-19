@@ -7,6 +7,7 @@ import (
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
@@ -14,7 +15,15 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
+var tfExecPath = ""
+var tfLoaded = make(chan struct{})
+
 func init() {
+	tmpDir, err := os.MkdirTemp("", "tfinit-*")
+	if err != nil {
+		panic("unable to create temp dir for terraform plugins")
+	}
+	os.Setenv("TF_PLUGIN_CACHE_DIR", tmpDir)
 	go func() {
 		installer := &releases.ExactVersion{
 			Product:    product.Terraform,
@@ -22,13 +31,12 @@ func init() {
 			InstallDir: "/tmp",
 		}
 
-		fmt.Println("installing terraform")
 		path, err := installer.Install(context.Background())
 		if err != nil {
 			panic(fmt.Errorf("error installing Terraform: %s", err))
 		}
 		tfExecPath = path
-		fmt.Println("installed terraform to ", tfExecPath)
+		close(tfLoaded)
 	}()
 }
 
@@ -59,15 +67,15 @@ func (kr *TerraformResource) Name() string {
 	return kr.Change.Address
 }
 
-var tfExecPath = ""
-
 func RenderTerraform(workingDir string) (*tfjson.Plan, error) {
+	<-tfLoaded
 	tf, err := tfexec.NewTerraform(workingDir, tfExecPath)
 	if err != nil {
 		return nil, fmt.Errorf("error running NewTerraform: %s", err)
 	}
 
 	fmt.Println("Running init ", tfExecPath)
+
 	err = tf.Init(context.Background(), tfexec.Upgrade(true))
 	if err != nil {
 		return nil, fmt.Errorf("error running Init: %s", err)
@@ -99,12 +107,20 @@ func RenderTerraform(workingDir string) (*tfjson.Plan, error) {
 type tfDiffer struct {
 }
 
-func (td *tfDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldDir, newDir string) ([]ResourceDiff, error) {
+func (td *tfDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldDir, newDir string) ([]ResourceDiff, []Resource, []Resource, error) {
 	tfplan, err := RenderTerraform(newDir)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
+	spew.Dump(tfplan)
 	diff := []ResourceDiff{}
+	allResources := []Resource{}
+	for _, rc := range tfplan.PlannedValues.RootModule.Resources {
+		allResources = append(allResources, &TerraformResource{
+			Resource:  rc,
+			Sensitive: rc.SensitiveValues,
+		})
+	}
 	for _, rc := range tfplan.ResourceChanges {
 		rd := ResourceDiff{
 			Pre: &TerraformResource{
@@ -134,5 +150,5 @@ func (td *tfDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.En
 		diff = append(diff, rd)
 	}
 
-	return diff, nil
+	return diff, allResources, allResources, nil
 }

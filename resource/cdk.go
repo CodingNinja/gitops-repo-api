@@ -56,13 +56,13 @@ func RenderCdk(cdkDir string) (*CloudformationTemplate, error) {
 type cdkDiffer struct {
 }
 
-func (td *cdkDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error) {
+func (td *cdkDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	// Won't actually run concurrently because we block during CFN builds currently due to a concurrent map read/write related to intrinsic funcs in cfn library
 	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (*CloudformationTemplate, error) {
 		return RenderCdk(dir)
 	})
 	if err != nil && old == nil && new == nil {
-		return nil, fmt.Errorf("error extracting cloudformation from CDK - %w", err)
+		return nil, nil, nil, fmt.Errorf("error extracting cloudformation from CDK - %w", err)
 	}
 
 	return doCfnDiff(ctx, old, new)

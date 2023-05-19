@@ -54,7 +54,7 @@ func RenderKustomize(kustomizeDir string) (resmap.ResMap, error) {
 
 	kustomization, err := os.ReadFile(kustfile)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read kustomization - %w", err)
+		return nil, fmt.Errorf("unable to read kustomization file %q - %w", kustfile, err)
 	}
 	kust := &types.Kustomization{}
 	if err := yaml.Unmarshal(kustomization, kust); err != nil {
@@ -81,13 +81,13 @@ func RenderKustomize(kustomizeDir string) (resmap.ResMap, error) {
 type kubeDiffer struct {
 }
 
-func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error) {
+func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
 		return RenderKustomize(dir)
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	if old == nil {
@@ -104,34 +104,39 @@ func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.
 	// because we don't really want to expose the internal kustomize representation
 	cleanedOld, err := kubeCleanResmap(old)
 	if err != nil {
-		return nil, fmt.Errorf("unable to clean old resmap - %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to clean old resmap - %w", err)
 	}
 
 	cleanedNew, err := kubeCleanResmap(new)
 	if err != nil {
-		return nil, fmt.Errorf("unable to clean old resmap - %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to clean old resmap - %w", err)
 	}
 
 	var errs error
+	allNew := []Resource{}
 	for _, newRes := range new.Resources() {
+		// We explicitly ignore errors here as they are only returned when there is a YAML
+		// decoding error parsing the origin field
+		newResOrigin, _ := newRes.GetOrigin()
+		allNew = append(allNew, &KustomizeResource{
+			Resource: newRes,
+			Origin:   kubeEntrypointOrigin(rs, ep, newResOrigin),
+		})
 		// Match objects which we have no "old" version of
 		// which indicates they are being created
 		origRes, err := old.GetByCurrentId(newRes.CurId())
 		if err != nil {
 			cleanedPost, err := cleanedNew.GetByCurrentId(newRes.CurId())
 			if err != nil {
-				return nil, fmt.Errorf("unable to get cleaned copy of new resource - %W", err)
+				return nil, nil, nil, fmt.Errorf("unable to get cleaned copy of new resource - %W", err)
 			}
-			// We explicitly ignore errors here as they are only returned when there is a YAML
-			// decoding error parsing the origin field
-			postOrigin, _ := newRes.GetOrigin()
 
 			rd := ResourceDiff{
 				Type: DiffTypeCreate,
 				Pre:  nil,
 				Post: &KustomizeResource{
 					Resource: cleanedPost,
-					Origin:   kubeEntrypointOrigin(rs, ep, postOrigin),
+					Origin:   kubeEntrypointOrigin(rs, ep, newResOrigin),
 				},
 				Diff: r3diff.Changelog{},
 			}
@@ -150,13 +155,13 @@ func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.
 		if len(changelog) > 0 {
 			cleanedPre, err := cleanedOld.GetByCurrentId(origRes.CurId())
 			if err != nil {
-				return nil, fmt.Errorf("unable to get cleaned copy of resource - %W", err)
+				return nil, nil, nil, fmt.Errorf("unable to get cleaned copy of resource - %W", err)
 			}
 			preOrigin, _ := origRes.GetOrigin()
 
 			cleanedPost, err := cleanedNew.GetByCurrentId(newRes.CurId())
 			if err != nil {
-				return nil, fmt.Errorf("unable to get cleaned copy of new resource - %W", err)
+				return nil, nil, nil, fmt.Errorf("unable to get cleaned copy of new resource - %W", err)
 			}
 			postOrigin, _ := newRes.GetOrigin()
 
@@ -175,12 +180,18 @@ func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.
 		}
 	}
 
+	allOld := []Resource{}
 	// Finally we collect a list of all the deleted resources
 	for _, r := range old.Resources() {
+		newResOrigin, _ := r.GetOrigin()
+		allOld = append(allOld, &KustomizeResource{
+			Resource: r,
+			Origin:   kubeEntrypointOrigin(rs, ep, newResOrigin),
+		})
 		if _, err := new.GetByCurrentId(r.CurId()); err != nil {
 			cleanedPre, err := cleanedOld.GetByCurrentId(r.CurId())
 			if err != nil {
-				return nil, fmt.Errorf("unable to get cleaned copy of resource - %W", err)
+				return nil, nil, nil, fmt.Errorf("unable to get cleaned copy of resource - %W", err)
 			}
 			origin, _ := r.GetOrigin()
 			diff = append(diff, ResourceDiff{
@@ -195,7 +206,7 @@ func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.
 		}
 	}
 
-	return diff, errs
+	return diff, allOld, allNew, errs
 }
 
 func kubeCleanResmap(rm resmap.ResMap) (resmap.ResMap, error) {

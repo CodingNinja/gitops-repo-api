@@ -19,24 +19,29 @@ func extractConcurrent[T any](ep entrypoint.Entrypoint, preDir string, postDir s
 	var buildErrs error
 	go func() {
 		defer ewg.Done()
-		pr, err := extract(preDir, ep)
-		if err != nil {
-			buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build pre-entrypoint %q - %w", preDir, err))
-			return
+		if preDir != "" {
+
+			pr, err := extract(preDir, ep)
+			if err != nil {
+				buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build pre-entrypoint %q - %w", preDir, err))
+				return
+			}
+			preResources = pr
 		}
-		preResources = pr
 
 	}()
 
 	ewg.Add(1)
 	go func() {
 		defer ewg.Done()
-		pr, err := extract(postDir, ep)
-		if err != nil {
-			buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build post-entrypoint %q - %w", postDir, err))
-			return
+		if postDir != "" {
+			pr, err := extract(postDir, ep)
+			if err != nil {
+				buildErrs = errors.Join(buildErrs, fmt.Errorf("unable to build post-entrypoint %q - %w", postDir, err))
+				return
+			}
+			postResources = pr
 		}
-		postResources = pr
 	}()
 
 	ewg.Wait()

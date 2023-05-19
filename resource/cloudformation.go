@@ -77,24 +77,30 @@ func RenderCloudformation(cfnFile string) (*CloudformationTemplate, error) {
 type cfnDiffer struct {
 }
 
-func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, error) {
+func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	// Won't actually run concurrently because we block during CFN builds currently due to a concurrent map read/write related to intrinsic funcs in cfn library
 	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (*CloudformationTemplate, error) {
 		return RenderCloudformation(dir)
 	})
 
 	if err != nil && old == nil && new == nil {
-		return nil, fmt.Errorf("unable to concurrently render cfn resources - %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to concurrently render cfn resources - %w", err)
 	}
 
 	return doCfnDiff(ctx, old, new)
 }
 
-func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *CloudformationTemplate) ([]ResourceDiff, error) {
+func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *CloudformationTemplate) ([]ResourceDiff, []Resource, []Resource, error) {
 
 	diff := []ResourceDiff{}
+	allNew := []Resource{}
+	allOld := []Resource{}
 	for name, res := range new.Resources {
 		var oldRes cfnResource
+		allNew = append(allNew, &CloudformationResource{
+			ResName:  name,
+			Resource: res,
+		})
 		ok := false
 		if old != nil {
 			r, has := old.Resources[name]
@@ -106,7 +112,7 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 		if !ok {
 			rDiff, err := cfnDiffResource(nil, res)
 			if err != nil {
-				return nil, fmt.Errorf("unable to diff resources - %w", err)
+				return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
 			}
 
 			rd := ResourceDiff{
@@ -122,7 +128,7 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 		} else {
 			rDiff, err := cfnDiffResource(oldRes, res)
 			if err != nil {
-				return nil, fmt.Errorf("unable to diff resources - %w", err)
+				return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
 			}
 			if len(rDiff) > 0 {
 				rd := ResourceDiff{
@@ -144,10 +150,14 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 
 	if old != nil {
 		for name, res := range old.Resources {
+			allOld = append(allNew, &CloudformationResource{
+				ResName:  name,
+				Resource: res,
+			})
 			if _, ok := new.Resources[name]; !ok {
 				rDiff, err := cfnDiffResource(res, nil)
 				if err != nil {
-					return nil, fmt.Errorf("unable to diff resources - %w", err)
+					return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
 				}
 
 				rd := ResourceDiff{
@@ -163,7 +173,7 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 		}
 	}
 
-	return diff, nil
+	return diff, allOld, allNew, nil
 }
 
 func cfnDiffResource(aRes, bRes interface{}) (r3diff.Changelog, error) {

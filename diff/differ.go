@@ -31,6 +31,7 @@ type EntrypointDiff struct {
 	Entrypoint entrypoint.Entrypoint   `json:"entrypoint"`
 	Error      error                   `json:"error"`
 	Diff       []resource.ResourceDiff `json:"diff"`
+	All        []resource.Resource     `json:"all"`
 }
 
 // Diff will return either an EntrypointDiff, or an Error for every Entrypoint that is discovered in the
@@ -54,7 +55,7 @@ func (rd *repoDiffer) Extract(ctx context.Context, ref plumbing.ReferenceName) (
 		go func() {
 			defer wg.Done()
 
-			diff, err := rd.diffEntrypoint(ctx, ep.ep, "", dir)
+			diff, all, _, err := rd.diffEntrypoint(ctx, ep.ep, "", dir)
 			if err != nil {
 				errs = errors.Join(errs, err)
 			}
@@ -63,6 +64,7 @@ func (rd *repoDiffer) Extract(ctx context.Context, ref plumbing.ReferenceName) (
 				Entrypoint: ep.ep,
 				Diff:       diff,
 				Error:      err,
+				All:        all,
 			})
 		}()
 	}
@@ -110,7 +112,7 @@ func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName
 		go func() {
 			defer wg.Done()
 
-			diff, err := rd.diffEntrypoint(ctx, ep.ep, preDir, postDir)
+			diff, _, post, err := rd.diffEntrypoint(ctx, ep.ep, preDir, postDir)
 			if err != nil {
 				errs = errors.Join(errs, err)
 			}
@@ -119,6 +121,7 @@ func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName
 				Entrypoint: ep.ep,
 				Diff:       diff,
 				Error:      err,
+				All:        post,
 			})
 		}()
 	}
@@ -172,16 +175,22 @@ func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []ent
 	return eplist, nil
 }
 
-func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, error) {
+func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, []resource.Resource, []resource.Resource, error) {
 	differ, err := resource.EntrypointDiffer(ep)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get differ for entrypoint - %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to get differ for entrypoint - %w", err)
+	}
+	if preDir != "" {
+		preDir = path.Join(preDir, ep.Directory)
+	}
+	if postDir != "" {
+		postDir = path.Join(postDir, ep.Directory)
 	}
 
-	diff, err := differ.Diff(ctx, rd.preRs, ep, path.Join(preDir, ep.Directory), path.Join(postDir, ep.Directory))
+	diff, pre, post, err := differ.Diff(ctx, rd.preRs, ep, preDir, postDir)
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract entrypoint diff - %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to extract entrypoint diff - %w", err)
 	}
 
-	return diff, nil
+	return diff, pre, post, nil
 }

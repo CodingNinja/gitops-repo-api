@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gosimple/slug"
 	"gopkg.in/yaml.v3"
 )
@@ -44,7 +43,6 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 				for k, v := range matches {
 					epctx[k] = v
 				}
-				spew.Dump(realpath, s.Regex.String())
 
 				name := ""
 				if n, ok := epctx["name"]; ok {
