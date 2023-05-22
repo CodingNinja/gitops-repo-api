@@ -95,48 +95,30 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 	diff := []ResourceDiff{}
 	allNew := []Resource{}
 	allOld := []Resource{}
-	for name, res := range new.Resources {
-		var oldRes cfnResource
-		allNew = append(allNew, &CloudformationResource{
-			ResName:  name,
-			Resource: res,
-		})
-		ok := false
-		if old != nil {
-			r, has := old.Resources[name]
-			if has {
-				oldRes = r
+	if new != nil {
+		for name, res := range new.Resources {
+			var oldRes cfnResource
+			allNew = append(allNew, &CloudformationResource{
+				ResName:  name,
+				Resource: res,
+			})
+			ok := false
+			if old != nil {
+				r, has := old.Resources[name]
+				if has {
+					oldRes = r
+				}
+				ok = has
 			}
-			ok = has
-		}
-		if !ok {
-			rDiff, err := cfnDiffResource(nil, res)
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
-			}
+			if !ok {
+				rDiff, err := cfnDiffResource(nil, res)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
+				}
 
-			rd := ResourceDiff{
-				Type: DiffTypeCreate,
-				Pre:  nil,
-				Post: &CloudformationResource{
-					ResName:  name,
-					Resource: res,
-				},
-				Diff: rDiff,
-			}
-			diff = append(diff, rd)
-		} else {
-			rDiff, err := cfnDiffResource(oldRes, res)
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
-			}
-			if len(rDiff) > 0 {
 				rd := ResourceDiff{
-					Type: DiffTypeUpdate,
-					Pre: &CloudformationResource{
-						ResName:  name,
-						Resource: oldRes,
-					},
+					Type: DiffTypeCreate,
+					Pre:  nil,
 					Post: &CloudformationResource{
 						ResName:  name,
 						Resource: res,
@@ -144,6 +126,26 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 					Diff: rDiff,
 				}
 				diff = append(diff, rd)
+			} else {
+				rDiff, err := cfnDiffResource(oldRes, res)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
+				}
+				if len(rDiff) > 0 {
+					rd := ResourceDiff{
+						Type: DiffTypeUpdate,
+						Pre: &CloudformationResource{
+							ResName:  name,
+							Resource: oldRes,
+						},
+						Post: &CloudformationResource{
+							ResName:  name,
+							Resource: res,
+						},
+						Diff: rDiff,
+					}
+					diff = append(diff, rd)
+				}
 			}
 		}
 	}
