@@ -156,21 +156,23 @@ func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *Cloudforma
 				ResName:  name,
 				Resource: res,
 			})
-			if _, ok := new.Resources[name]; !ok {
-				rDiff, err := cfnDiffResource(res, nil)
-				if err != nil {
-					return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
-				}
+			if new != nil {
+				if _, ok := new.Resources[name]; !ok {
+					rDiff, err := cfnDiffResource(res, nil)
+					if err != nil {
+						return nil, nil, nil, fmt.Errorf("unable to diff resources - %w", err)
+					}
 
-				rd := ResourceDiff{
-					Type: DiffTypeDelete,
-					Pre: &CloudformationResource{
-						ResName:  name,
-						Resource: res,
-					},
-					Diff: rDiff,
+					rd := ResourceDiff{
+						Type: DiffTypeDelete,
+						Pre: &CloudformationResource{
+							ResName:  name,
+							Resource: res,
+						},
+						Diff: rDiff,
+					}
+					diff = append(diff, rd)
 				}
-				diff = append(diff, rd)
 			}
 		}
 	}
