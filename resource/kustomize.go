@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
@@ -47,14 +48,17 @@ func RenderKustomize(kustomizeDir string) (resmap.ResMap, error) {
 	opts := krusty.MakeDefaultOptions()
 	pc := types.EnabledPluginConfig(types.BploLoadFromFileSys)
 	pc.HelmConfig.Command = "helm"
-	kustfile := path.Join(kustomizeDir, KustomizationFileSuffix)
+	kustfile := kustomizeDir
+	if !strings.HasSuffix(kustomizeDir, KustomizationFileSuffix) {
+		kustfile = path.Join(kustfile, KustomizationFileSuffix)
+	}
 
 	opts.PluginConfig = pc
 	k := krusty.MakeKustomizer(opts)
 
 	kustomization, err := os.ReadFile(kustfile)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read kustomization file %q - %w", kustfile, err)
+		return nil, nil
 	}
 	kust := &types.Kustomization{}
 	if err := yaml.Unmarshal(kustomization, kust); err != nil {

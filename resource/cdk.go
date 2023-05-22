@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
@@ -31,6 +32,7 @@ func init() {
 	NpmExecutablePath = npmPathd
 }
 func RenderCdk(cdkDir string) (*CloudformationTemplate, error) {
+	cdkDir = strings.TrimSuffix(cdkDir, "cdk.json")
 	// Open a template from file (can be JSON or YAML)
 	ciCmd := exec.Command(NpmExecutablePath, "ci")
 	ciCmd.Dir = cdkDir

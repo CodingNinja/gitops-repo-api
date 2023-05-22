@@ -67,6 +67,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 					fmt.Printf("%s is not a valid entrypoint\n", path)
 					return nil
 				}
+				fmt.Printf("got entrypoint %q with regex %q\n", name, s.Regex.String())
 
 				ep := Entrypoint{
 					Name:      name,
@@ -118,15 +119,21 @@ func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 		if stat, err := os.Stat(path.Join(epPath, "cdk.json")); err == nil && stat != nil {
 			return true
 		}
+		if strings.HasSuffix(epPath, "cdk.json") {
+			return true
+		}
 	}
 
 	if epType == EntrypointTypeKustomize {
 		if stat, err := os.Stat(path.Join(epPath, "kustomization.yaml")); err == nil && stat != nil {
 			return true
 		}
+		if strings.HasSuffix(epPath, "kustomization.yaml") {
+			return true
+		}
 	}
 
-	return epType == EntrypointTypeTerraform || epType == EntrypointTypeKustomize
+	return epType == EntrypointTypeTerraform
 }
 
 // regexNamedMatches Returns a map of named capture => value
