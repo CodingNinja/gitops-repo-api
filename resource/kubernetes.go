@@ -8,10 +8,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
+	"github.com/codingninja/gitops-repo-api/util"
 	r3diff "github.com/r3labs/diff/v3"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
@@ -28,7 +28,7 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 
 	opts.PluginConfig = pc
 	k := krusty.MakeKustomizer(opts)
-	recursive := true
+	recursive := false
 
 	resources := []string{}
 	if recursive {
@@ -37,7 +37,7 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 			if err != nil {
 				return err
 			}
-			if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+			if util.IsValidKubeFile(path) {
 				resources = append(resources, path[len(manifestDir):])
 			}
 			return nil
@@ -48,7 +48,7 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 			return nil, err
 		}
 		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), ".yaml") || strings.HasSuffix(entry.Name(), ".yml") {
+			if util.IsValidKubeFile(entry.Name()) {
 				resources = append(resources, entry.Name())
 			}
 		}

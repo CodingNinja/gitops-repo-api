@@ -7,7 +7,6 @@ import (
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
@@ -112,7 +111,6 @@ func (td *tfDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.En
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	spew.Dump(tfplan)
 	diff := []ResourceDiff{}
 	allResources := []Resource{}
 	for _, rc := range tfplan.PlannedValues.RootModule.Resources {

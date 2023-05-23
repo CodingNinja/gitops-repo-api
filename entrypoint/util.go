@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/codingninja/gitops-repo-api/util"
 	"gopkg.in/yaml.v3"
 )
 
@@ -50,7 +51,7 @@ func isValidKubernetesEntrypoint(epPath string) bool {
 	}
 
 	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".yaml") || strings.HasSuffix(f.Name(), ".yml") {
+		if util.IsValidKubeFile(path.Join(epPath, f.Name())) {
 			return true
 		}
 	}
