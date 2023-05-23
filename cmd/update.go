@@ -55,8 +55,8 @@ var updateCmd = &cobra.Command{
 
 		preRef := plumbing.NewBranchReferenceName(to)
 		postRef := plumbing.NewBranchReferenceName(from)
-		epds := []entrypoint.EntrypointDiscoverySpec{
-			{
+		epds := []entrypoint.EntrypointFactory{
+			entrypoint.EntrypointDiscoverySpec{
 				Type: entrypoint.EntrypointTypeKustomize,
 				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/`),
 				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)`),

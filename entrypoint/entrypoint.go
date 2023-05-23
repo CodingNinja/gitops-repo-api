@@ -5,6 +5,7 @@ import "github.com/go-git/go-git/v5/plumbing"
 type EntrypointType string
 
 const (
+	EntrypointTypeKubernetes     EntrypointType = "kubernetes"
 	EntrypointTypeKustomize      EntrypointType = "kustomize"
 	EntrypointTypeCloudformation EntrypointType = "cloudformation"
 	EntrypointTypeCdk            EntrypointType = "cdk"

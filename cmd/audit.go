@@ -55,8 +55,8 @@ var auditCmd = &cobra.Command{
 		// Our target is always a branch because you can't merge into a commit obviuosly
 		auditRef := plumbing.NewBranchReferenceName(ref)
 
-		epds := []entrypoint.EntrypointDiscoverySpec{
-			{
+		epds := []entrypoint.EntrypointFactory{
+			entrypoint.EntrypointDiscoverySpec{
 				Type: entrypoint.EntrypointTypeKustomize,
 				// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/`),
 				Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)`),

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
@@ -29,6 +30,29 @@ type ResourceDiff struct {
 	Pre  Resource         `json:"pre"`
 	Post Resource         `json:"post"`
 	Diff r3diff.Changelog `json:"diff"`
+}
+
+type fakeResourceDiff ResourceDiff
+
+func (rd *ResourceDiff) MarshalJSON() ([]byte, error) {
+	resourceType := ""
+	if rd.Pre != nil {
+		resourceType = rd.Pre.Type()
+	} else if rd.Post != nil {
+		resourceType = rd.Post.Type()
+	}
+
+	return json.Marshal(struct {
+		fakeResourceDiff
+		Identifier   string `json:"identifier"`
+		Name         string `json:"name"`
+		ResourceType string `json:"resourceType"`
+	}{
+		fakeResourceDiff: fakeResourceDiff(*rd),
+		Identifier:       rd.Identifier(),
+		Name:             rd.Name(),
+		ResourceType:     resourceType,
+	})
 }
 
 func (rd *ResourceDiff) Identifier() string {
@@ -63,8 +87,10 @@ type ResourceDiffer interface {
 
 func EntrypointDiffer(ep entrypoint.Entrypoint) (ResourceDiffer, error) {
 	switch ep.Type {
-	case entrypoint.EntrypointTypeKustomize:
+	case entrypoint.EntrypointTypeKubernetes:
 		return &kubeDiffer{}, nil
+	case entrypoint.EntrypointTypeKustomize:
+		return &kustomizeDiffer{}, nil
 	case entrypoint.EntrypointTypeTerraform:
 		return &tfDiffer{}, nil
 	case entrypoint.EntrypointTypeCloudformation:

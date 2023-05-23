@@ -13,7 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
-func NewDiffer(preRs *git.RepoSpec, postRs *git.RepoSpec, epds []entrypoint.EntrypointDiscoverySpec) *repoDiffer {
+func NewDiffer(preRs *git.RepoSpec, postRs *git.RepoSpec, epds []entrypoint.EntrypointFactory) *repoDiffer {
 	return &repoDiffer{
 		preRs:  preRs,
 		postRs: postRs,
@@ -24,7 +24,7 @@ func NewDiffer(preRs *git.RepoSpec, postRs *git.RepoSpec, epds []entrypoint.Entr
 type repoDiffer struct {
 	preRs  *git.RepoSpec
 	postRs *git.RepoSpec
-	epds   []entrypoint.EntrypointDiscoverySpec
+	epds   []entrypoint.EntrypointFactory
 }
 
 type EntrypointDiff struct {
@@ -138,7 +138,7 @@ type internalentrypoint struct {
 	branch plumbing.ReferenceName
 }
 
-func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []entrypoint.EntrypointDiscoverySpec) ([]internalentrypoint, error) {
+func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []entrypoint.EntrypointFactory) ([]internalentrypoint, error) {
 	// This should be re-implemented to use channels
 	var preEps []entrypoint.Entrypoint
 	if preDir != "" {
