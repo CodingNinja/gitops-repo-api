@@ -35,6 +35,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 			if !d.IsDir() && !s.Files {
 				continue
 			}
+
 			if matches, ok := regexNamedMatches(realpath, s.Regex); ok {
 				epctx := make(map[string]interface{})
 				for k, v := range s.Context {
@@ -67,6 +68,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointDiscoverySpec) ([]E
 					fmt.Printf("%s is not a valid entrypoint\n", path)
 					return nil
 				}
+
 				fmt.Printf("got entrypoint %q with regex %q\n", name, s.Regex.String())
 
 				ep := Entrypoint{
@@ -119,16 +121,10 @@ func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 		if stat, err := os.Stat(path.Join(epPath, "cdk.json")); err == nil && stat != nil {
 			return true
 		}
-		if strings.HasSuffix(epPath, "cdk.json") {
-			return true
-		}
 	}
 
 	if epType == EntrypointTypeKustomize {
 		if stat, err := os.Stat(path.Join(epPath, "kustomization.yaml")); err == nil && stat != nil {
-			return true
-		}
-		if strings.HasSuffix(epPath, "kustomization.yaml") {
 			return true
 		}
 	}
@@ -136,7 +132,7 @@ func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 	return epType == EntrypointTypeTerraform
 }
 
-// regexNamedMatches Returns a map of named capture => value
+// regexNamedMatches returns a map of any named capture => value in regex and a boolean indicating if a match was made at all
 func regexNamedMatches(str string, regex regexp.Regexp) (map[string]string, bool) {
 	match := regex.FindStringSubmatch(str)
 
