@@ -32,7 +32,6 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 
 	resources := []string{}
 	if recursive {
-
 		filepath.WalkDir(manifestDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -63,12 +62,11 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 		return nil, fmt.Errorf("unable to marshal - %w", err)
 	}
 	kustfile := path.Join(manifestDir, KustomizationFileSuffix)
-	if err := os.WriteFile(kustfile, kustomization, 0777); err != nil {
+	if err := os.WriteFile(kustfile, kustomization, 0o777); err != nil {
 		return nil, fmt.Errorf("unable to write new kustomization - %w", err)
 	}
 
 	resmap, err := k.Run(filesys.MakeFsOnDisk(), filepath.Dir(kustfile))
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to build entrypoint with  kustomize - %w", err)
 	}
@@ -84,6 +82,7 @@ type KubernetesResource struct {
 func (kr *KubernetesResource) Type() string {
 	return string(entrypoint.EntrypointTypeKubernetes)
 }
+
 func (kr *KubernetesResource) Identifier() string {
 	return fmt.Sprintf("%s[%s]", kr.Resource.GetGvk().String(), kr.Name())
 }
@@ -98,8 +97,7 @@ func (kr *KubernetesResource) Name() string {
 	return fmt.Sprintf("%s/%s", ns, name)
 }
 
-type kubeDiffer struct {
-}
+type kubeDiffer struct{}
 
 func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
@@ -168,7 +166,6 @@ func doResmapDiff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoin
 		}
 
 		changelog, err := kubeDiffResmap(origRes, newRes)
-
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue
@@ -268,20 +265,11 @@ func kubeEntrypointOrigin(rs *git.RepoSpec, ep entrypoint.Entrypoint, o *resourc
 	}
 
 	if origin.Repo == "" {
-		ref := ""
-		if !ep.Hash.IsZero() {
-			ref = ep.Hash.String()
-		} else if ep.Branch.IsBranch() {
-			ref = ep.Branch.String()
-		} else {
-			ref = "unknown"
-		}
-
 		// todo: bug we don't actually pass the ref through properly
 		// because currently the entrypoint is shared between pre and post
 		// maybe extract to entrypointpath and entrypoint ?
 		origin.Repo = rs.URL
-		origin.Ref = ref
+		origin.Ref = "unknown"
 	}
 	return origin
 }
