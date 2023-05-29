@@ -57,8 +57,9 @@ func (epds EntrypointDiscoverySpec) MakeEntrypoint(basedir, repoPath string, isF
 			}
 		}
 
-		if !isValidEntrypoint(repoPath, epType) {
-			fmt.Printf("%s is not a valid entrypoint\n", repoPath)
+		epd := path.Join(basedir, repoPath)
+		if !isValidEntrypoint(epd, epType) {
+			fmt.Printf("%s is not a valid %q entrypoint\n", repoPath, epType)
 			return nil, nil
 		}
 
