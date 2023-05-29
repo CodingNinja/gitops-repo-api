@@ -58,6 +58,7 @@ func isValidKubernetesEntrypoint(epPath string) bool {
 
 	return false
 }
+
 func isValidTerraformEntrypoint(epPath string) bool {
 	files, err := os.ReadDir(epPath)
 	if err != nil {
@@ -72,6 +73,7 @@ func isValidTerraformEntrypoint(epPath string) bool {
 
 	return false
 }
+
 func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 	switch epType {
 	case EntrypointTypeCloudformation:

@@ -1,7 +1,6 @@
 package entrypoint
 
-import "github.com/go-git/go-git/v5/plumbing"
-
+// EntrypointType represents the tool which is used to manage the IaC resources in an Entrypoint
 type EntrypointType string
 
 const (
@@ -14,9 +13,8 @@ const (
 	EntrypointTypeHclV2          EntrypointType = "hclv2"
 )
 
+// Entrypoint represents a path in a repository which contains IaC resources which can be loaded by Sancire
 type Entrypoint struct {
-	Hash      plumbing.Hash          `json:"hash"`
-	Branch    plumbing.ReferenceName `json:"branch"`
 	Name      string                 `json:"name"`
 	Directory string                 `json:"directory"`
 	Type      EntrypointType         `json:"type"`

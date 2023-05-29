@@ -2,9 +2,8 @@ package resource
 
 import (
 	"context"
-	"fmt"
-
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
@@ -74,8 +73,7 @@ func RenderCloudformation(cfnFile string) (*CloudformationTemplate, error) {
 	return &tpl, nil
 }
 
-type cfnDiffer struct {
-}
+type cfnDiffer struct{}
 
 func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	// Won't actually run concurrently because we block during CFN builds currently due to a concurrent map read/write related to intrinsic funcs in cfn library
@@ -91,7 +89,6 @@ func (td *cfnDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.E
 }
 
 func doCfnDiff(ctx context.Context, old *CloudformationTemplate, new *CloudformationTemplate) ([]ResourceDiff, []Resource, []Resource, error) {
-
 	diff := []ResourceDiff{}
 	allNew := []Resource{}
 	allOld := []Resource{}

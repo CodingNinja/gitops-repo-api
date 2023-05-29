@@ -11,10 +11,12 @@ import (
 	"github.com/gosimple/slug"
 )
 
+// EntrypointFactory represents a factory for creating Entrypoints
 type EntrypointFactory interface {
 	MakeEntrypoint(basedir, realpath string, isFile bool) (*Entrypoint, error)
 }
 
+// EntrypointDiscoverySpec represents a specification for discovering Entrypoint directories in a repository
 type EntrypointDiscoverySpec struct {
 	Type    EntrypointType         `json:"type"`
 	Regex   regexp.Regexp          `json:"regex"`
@@ -22,6 +24,7 @@ type EntrypointDiscoverySpec struct {
 	Context map[string]interface{} `json:"context"`
 }
 
+// MakeEntrypoint attepmpts to create an Entrypoint from a given path
 func (epds EntrypointDiscoverySpec) MakeEntrypoint(basedir, repoPath string, isFile bool) (*Entrypoint, error) {
 	if !epds.Files && isFile {
 		return nil, nil
@@ -76,8 +79,8 @@ func (epds EntrypointDiscoverySpec) MakeEntrypoint(basedir, repoPath string, isF
 
 var _ EntrypointFactory = EntrypointDiscoverySpec{}
 
-// DiscoverEntrypoints finds all the entrypoints matching the supplied EntrypointDiscoverySpecs
 // TODO: Make this more performant, add a flag to only check dir names, include a basedir prop to limit search context
+// DiscoverEntrypoints walks a directory and returns a list of Entrypoints matching the supplied specs
 func DiscoverEntrypoints(directory string, specs []EntrypointFactory) ([]Entrypoint, error) {
 	directory = path.Clean(directory)
 	entrypoints := []Entrypoint{}
@@ -101,7 +104,6 @@ func DiscoverEntrypoints(directory string, specs []EntrypointFactory) ([]Entrypo
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +111,7 @@ func DiscoverEntrypoints(directory string, specs []EntrypointFactory) ([]Entrypo
 	return entrypoints, nil
 }
 
+// cfnMinimalTemplate is a minimal CloudFormation template that can be used to validate a file is actually a CloudFormation template
 type cfnMinimalTemplate struct {
 	AWSTemplateFormatVersion string `json:"AWSTemplateFormatVersion" yaml:"AWSTemplateFormatVersion"`
 }
