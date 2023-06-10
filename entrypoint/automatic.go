@@ -6,9 +6,12 @@ import (
 	"github.com/gosimple/slug"
 )
 
-func AutomaticDiscovery(ctx map[string]interface{}) EntrypointAutomaticDiscovery {
+func AutomaticDiscovery(ctx map[string]interface{}, types map[EntrypointType]bool) EntrypointAutomaticDiscovery {
+	if len(types) == 0 {
+		types = DefaultSupportedTypes
+	}
 	return EntrypointAutomaticDiscovery{
-		SupportedTypes: DefaultSupportedTypes,
+		SupportedTypes: types,
 		Context:        ctx,
 	}
 }

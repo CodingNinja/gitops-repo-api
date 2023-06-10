@@ -13,19 +13,32 @@ import (
 
 func isValidCloudformationEntrypoint(epPath string) bool {
 	content, err := os.ReadFile(epPath)
-	tpl := &cfnMinimalTemplate{}
+	tpl := map[string]interface{}{}
 	if err == nil {
 		if strings.Contains(epPath, ".json") {
-			if err := json.Unmarshal(content, tpl); err != nil {
+			if err := json.Unmarshal(content, &tpl); err != nil {
 				return false
 			}
 		} else {
-			if err := yaml.Unmarshal(content, tpl); err != nil {
+			if err := yaml.Unmarshal(content, &tpl); err != nil {
 				return false
 			}
 		}
 
-		return tpl.AWSTemplateFormatVersion != ""
+		if rawResources, ok := tpl["Resources"]; ok {
+			if resourceList, ok := rawResources.(map[string]interface{}); ok {
+				for _, resource := range resourceList {
+					if resourceMap, ok := resource.(map[string]interface{}); ok {
+						if resourceType, ok := resourceMap["Type"]; ok {
+							if _, ok := resourceType.(string); ok {
+								return true
+							}
+						}
+					}
+				}
+			}
+			return true
+		}
 	}
 	return false
 }

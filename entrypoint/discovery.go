@@ -112,7 +112,12 @@ func DiscoverEntrypoints(directory string, specs []EntrypointFactory) ([]Entrypo
 	return entrypoints, nil
 }
 
+type cfnMinimalResource struct {
+	Properties map[string]interface{} `json:"Properties" yaml:"Properties"`
+	Metadata   map[string]interface{} `json:"Metadata" yaml:"Metadata"`
+}
+
 // cfnMinimalTemplate is a minimal CloudFormation template that can be used to validate a file is actually a CloudFormation template
 type cfnMinimalTemplate struct {
-	AWSTemplateFormatVersion string `json:"AWSTemplateFormatVersion" yaml:"AWSTemplateFormatVersion"`
+	Resources map[string]cfnMinimalResource `json:"AWSTemplateFormatVersion" yaml:"AWSTemplateFormatVersion"`
 }
