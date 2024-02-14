@@ -37,7 +37,7 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 				return err
 			}
 			if util.IsValidKubeFile(path) {
-				resources = append(resources, path[len(manifestDir):])
+				resources = append(resources, path[len(manifestDir)+1:])
 			}
 			return nil
 		})
@@ -47,8 +47,11 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 			return nil, err
 		}
 		for _, entry := range entries {
-			if util.IsValidKubeFile(entry.Name()) {
+			manifestAbsPath := path.Join(manifestDir, entry.Name())
+			if util.IsValidKubeFile(manifestAbsPath) {
 				resources = append(resources, entry.Name())
+			}else{
+				fmt.Printf("File %q is not a valid kubernetes manifest\n", manifestAbsPath)
 			}
 		}
 	}
@@ -101,7 +104,7 @@ type kubeDiffer struct{}
 
 func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
-		return RenderKustomize(dir)
+		return RenderKubernetes(dir)
 	})
 	if err != nil {
 		return nil, nil, nil, err
