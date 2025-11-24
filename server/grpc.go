@@ -1,58 +1,52 @@
 package server
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"os"
-// 	"regexp"
+import (
+	"context"
+	"fmt"
 
-// 	"github.com/codingninja/gitops-repo-api/api"
-// 	"github.com/codingninja/gitops-repo-api/diff"
-// 	"github.com/codingninja/gitops-repo-api/entrypoint"
-// 	"github.com/codingninja/gitops-repo-api/git"
-// 	"github.com/go-git/go-git/v5/plumbing"
-// )
+	"github.com/codingninja/gitops-repo-api/api"
+	"github.com/codingninja/gitops-repo-api/diff"
+	"github.com/codingninja/gitops-repo-api/entrypoint"
+	"github.com/codingninja/gitops-repo-api/git"
+	"github.com/go-git/go-git/v5/plumbing"
+)
 
 func NewGrpc() *diffApiServer {
 	return &diffApiServer{}
 }
 
 type diffApiServer struct {
-	// api.DiffApiServer
+	api.DiffApiServer
 }
 
-// func (das diffApiServer) Diff(ctx context.Context, dr *api.DiffRequest) (*api.DiffResponse, error) {
-// 	debug := true
-// 	rs := git.NewRepoSpec(dr.RepoUrl, nil)
+func (das diffApiServer) Diff(ctx context.Context, dr *api.DiffRequest) (*api.DiffResponse, error) {
+	from := git.NewRepoSpec(dr.From.Repository.URL, nil)
 
-// 	if debug {
-// 		rs.Progress = os.Stdout
-// 	}
+	var to *git.RepoSpec
+	if dr.To.Repository != nil {
+		to = git.NewRepoSpec(dr.To.Repository.URL, nil)
+	} else {
+		to = git.NewRepoSpec(dr.From.Repository.URL, nil)
+	}
 
-// 	branchName := dr.To
-// 	preRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName(branchName), plumbing.NewHash(dr.From))
-// 	postRef := plumbing.NewSymbolicReference(preRef.Name(), preRef.Name())
-// 	epds := []entrypoint.EntrypointDiscoverySpec{
-// 		{
-// 			Type: entrypoint.EntrypointTypeKustomize,
-// 			// Regex: *regexp.MustCompile(`/(?P<name>[^/]+)/overlays/(?P<overlay>[^/]+)/kustomization.yaml`),
-// 			Regex: *regexp.MustCompile(`/k8-workshop/overlays/(?P<overlay>[^/]+)`),
-// 			Context: map[string]string{
-// 				"name": "k8-workshop",
-// 			},
-// 		},
-// 	}
-// 	differ := diff.NewDiffer(rs, epds)
-// 	diff, err := differ.Diff(ctx, preRef, postRef)
-// 	if err != nil {
-// 		fmt.Printf("Got errors diffing resources:\n\n%s\n", err.Error())
-// 	}
-// 	result := api.DiffResponse(api.DiffResponse{
-// 		Diffs: []*api.DiffResponse_Diff{
-// 			&api.DiffResponse_Diff{
-// 				Entrypoint: &api.Entrypoint{},
-// 			},
-// 		},
-// 	})
-// 	return &result, nil
-// }
+	epds := []entrypoint.EntrypointFactory{}
+	if aep := dr.Filters.GetAutomatedEntrypoint(); aep != nil {
+		ctx := map[string]interface{}{}
+		for k, v := range aep.Context {
+			ctx[k] = v
+		}
+		epds = append(epds, entrypoint.AutomaticDiscovery(ctx, nil))
+	}
+
+	fmt.Printf("will diff from %s to %s\n", dr.From.Target, dr.To.Target)
+
+	differ := diff.NewDiffer(from, to, epds)
+	diff, err := differ.Diff(ctx, plumbing.NewBranchReferenceName(dr.From.Target), plumbing.NewBranchReferenceName(dr.To.Target))
+	if err != nil {
+		return &api.DiffResponse{
+			Error: err.Error(),
+		}, err
+	}
+	result := api.NewDiffResponse(diff)
+	return result, nil
+}

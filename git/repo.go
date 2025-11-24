@@ -38,6 +38,38 @@ func (rs *RepoSpec) CloneDirectory(branch string) string {
 	return path.Join(os.TempDir(), rs.Name(), branch)
 }
 
+func (rs *RepoSpec) ListBranches(ctx context.Context) ([]*plumbing.Reference, error) {
+	repo, err := rs.Open(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error opening repo %q - %w", rs.URL, err)
+	}
+	refs, err := repo.Branches()
+	if err != nil {
+		return nil, fmt.Errorf("error getting branches for repo %q - %w", rs.URL, err)
+	}
+	var branches []*plumbing.Reference
+	err = refs.ForEach(func(ref *plumbing.Reference) error {
+		branches = append(branches, ref)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error getting branches for repo %q - %w", rs.URL, err)
+	}
+	return branches, nil
+}
+
+func (rs *RepoSpec) ResolveRevion(ctx context.Context, ref string) (*plumbing.Hash, error) {
+	repo, err := rs.Open(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error opening repo %q - %w", rs.URL, err)
+	}
+	hash, err := repo.ResolveRevision(plumbing.Revision(ref))
+	if err != nil {
+		return nil, fmt.Errorf("error resolving revision %q for repo %q - %w", ref, rs.URL, err)
+	}
+	return hash, nil
+}
+
 func (rs *RepoSpec) Open(ctx context.Context) (*git.Repository, error) {
 	rs.l.Lock()
 	defer rs.l.Unlock()
@@ -51,7 +83,6 @@ func (rs *RepoSpec) Open(ctx context.Context) (*git.Repository, error) {
 		Auth:     rs.Credentials,
 		Progress: rs.Progress,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to clone the main repo - %w", err)
 	}
@@ -95,7 +126,6 @@ func (rs *RepoSpec) Checkout(ctx context.Context, reference plumbing.ReferenceNa
 		Progress:          rs.Progress,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
-
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to create branch repo - %w", err)
 	}

@@ -1,0 +1,9 @@
+
+syntax = "proto3";
+
+package apipb;
+option go_package = "github.com/codingninja/gitops-repo-api/api";
+
+message Repository {
+    string URL = 1;
+}

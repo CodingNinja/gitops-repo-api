@@ -21,8 +21,11 @@ import (
 	"log"
 	"net"
 
+	"github.com/codingninja/gitops-repo-api/api"
+	"github.com/codingninja/gitops-repo-api/server"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 // serverCmd represents the server command
@@ -31,12 +34,14 @@ var serverCmd = &cobra.Command{
 	Short: "Start the gRPC server",
 	Long:  `Provides a gRPC Server`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		mode := "grpc"
+		mode := cmd.Flag("mode").Value.String()
 		if mode == "grpc" {
 			port, err := cmd.Flags().GetInt("port")
 			if err != nil {
 				return fmt.Errorf("unable to get port - %w", err)
 			}
+
+			log.Printf("Starting gRPC server on localhost:%d", port)
 
 			return startGrpcServer(port)
 		}
@@ -56,6 +61,7 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	serverCmd.Flags().IntP("port", "p", 8080, "Port to expose server on")
+	serverCmd.Flags().StringP("mode", "m", "grpc", "The mode of the server")
 }
 
 func startGrpcServer(port int) error {
@@ -66,7 +72,10 @@ func startGrpcServer(port int) error {
 
 	opts := []grpc.ServerOption{}
 
+	// enable grpc reflection
+	// Register reflection service on gRPC server.
 	grpcServer := grpc.NewServer(opts...)
-	// RegisterDiffApiServer(grpcServer, server.NewGrpc())
+	reflection.Register(grpcServer)
+	api.RegisterDiffApiServer(grpcServer, server.NewGrpc())
 	return grpcServer.Serve(lis)
 }

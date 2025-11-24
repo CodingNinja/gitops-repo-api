@@ -3,27 +3,45 @@ syntax = "proto3";
 
 package apipb;
 option go_package = "github.com/codingninja/gitops-repo-api/api";
+import "api/repo-api.proto";
 
 // Interface exported by the server.
-
 service DiffApi {
   rpc Diff(DiffRequest) returns(DiffResponse);
 }
 
 message DiffRequest {
-    message Filter { }
+    message EntrypointList {
+        repeated Entrypoint Entrypoints = 1;
+    }
+    message AutomatedEntrypoint {
+        repeated EntrypointType Types = 1;
+        map<string, string> Context = 2;
+    }
+    message Filter {
+        oneof Filter {
+            EntrypointList Entrypoints = 1;
+            AutomatedEntrypoint AutomatedEntrypoint = 2;
+        } 
+    }
     Reference From = 1;
     Reference To = 2;
-    repeated Filter Filters = 3;
+    Filter Filters = 3;
 }
 
 message Reference {
-    string Repository = 1;
+    Repository Repository = 1;
     string Target = 2;
+}
+enum EntrypointType {
+    KUBERNETES = 0;
 }
 
 message Entrypoint {
-
+	string Name                 = 1;
+	string Directory                 = 2;
+    EntrypointType Type              = 3;
+    map<string, string>    Context = 4;
 }
 
 enum DiffType {
@@ -56,4 +74,5 @@ message DiffResponse {
         repeated EntrypointDiff Changes = 3;
     }
     repeated Diff Diffs = 1;
+    string Error = 2;
 }
