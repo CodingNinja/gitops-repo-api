@@ -13,6 +13,12 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
+type Differ interface {
+	Extract(context.Context, plumbing.ReferenceName) ([]EntrypointDiff, error)
+	Diff(context.Context, plumbing.ReferenceName, plumbing.ReferenceName) ([]EntrypointDiff, error)
+	DiffEntrypoint(context.Context, entrypoint.Entrypoint, string, string) ([]resource.ResourceDiff, []resource.Resource, []resource.Resource, error)
+}
+
 func NewDiffer(preRs *git.RepoSpec, postRs *git.RepoSpec, epds []entrypoint.EntrypointFactory) *repoDiffer {
 	return &repoDiffer{
 		preRs:  preRs,
@@ -55,7 +61,7 @@ func (rd *repoDiffer) Extract(ctx context.Context, ref plumbing.ReferenceName) (
 		go func() {
 			defer wg.Done()
 
-			diff, all, _, err := rd.diffEntrypoint(ctx, ep.ep, "", dir)
+			diff, all, _, err := rd.DiffEntrypoint(ctx, ep.ep, "", dir)
 			if err != nil {
 				errs = errors.Join(errs, err)
 			}
@@ -112,7 +118,7 @@ func (rd *repoDiffer) Diff(ctx context.Context, pre, post plumbing.ReferenceName
 		go func() {
 			defer wg.Done()
 
-			diff, _, post, err := rd.diffEntrypoint(ctx, ep.ep, preDir, postDir)
+			diff, _, post, err := rd.DiffEntrypoint(ctx, ep.ep, preDir, postDir)
 			if err != nil {
 				errs = errors.Join(errs, err)
 			}
@@ -175,7 +181,7 @@ func discoverEntrypoints(ctx context.Context, preDir, postDir string, epds []ent
 	return eplist, nil
 }
 
-func (rd *repoDiffer) diffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, []resource.Resource, []resource.Resource, error) {
+func (rd *repoDiffer) DiffEntrypoint(ctx context.Context, ep entrypoint.Entrypoint, preDir, postDir string) ([]resource.ResourceDiff, []resource.Resource, []resource.Resource, error) {
 	differ, err := resource.EntrypointDiffer(ep)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("unable to get differ for entrypoint - %w", err)
