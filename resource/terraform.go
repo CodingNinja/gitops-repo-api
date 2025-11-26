@@ -7,11 +7,13 @@ import (
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
+	"github.com/codingninja/gitops-repo-api/tracing"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+	"go.opentelemetry.io/otel/codes"
 )
 
 var tfExecPath = ""
@@ -66,27 +68,46 @@ func (kr *TerraformResource) Name() string {
 	return kr.Change.Address
 }
 
-func RenderTerraform(workingDir string) (*tfjson.Plan, error) {
+// RenderTerraform renders a Terraform plan for the given working directory.
+// It extracts the tracer from the context if available.
+func RenderTerraform(ctx context.Context, workingDir string) (*tfjson.Plan, error) {
+	tracer := getTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "resource.terraform.render")
+	defer span.End()
+
+	span.SetAttributes(
+		tracing.WorkingDir(workingDir),
+		tracing.ResourceType("terraform"),
+	)
+
 	<-tfLoaded
 	tf, err := tfexec.NewTerraform(workingDir, tfExecPath)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("error running NewTerraform: %s", err)
 	}
 
 	fmt.Println("Running init ", tfExecPath)
 
-	err = tf.Init(context.Background(), tfexec.Upgrade(true))
+	err = tf.Init(ctx, tfexec.Upgrade(true))
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("error running Init: %s", err)
 	}
 	fmt.Println("Init completed ", tfExecPath)
 
 	tfpf, err := os.CreateTemp("", "*.tfplan")
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("error creating tfplan file: %s", err)
 	}
-	changes, err := tf.Plan(context.Background(), tfexec.Out(tfpf.Name()))
+	changes, err := tf.Plan(ctx, tfexec.Out(tfpf.Name()))
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -94,9 +115,15 @@ func RenderTerraform(workingDir string) (*tfjson.Plan, error) {
 		return nil, nil
 	}
 
-	state, err := tf.ShowPlanFile(context.Background(), tfpf.Name())
+	state, err := tf.ShowPlanFile(ctx, tfpf.Name())
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
+	}
+
+	if state != nil && state.ResourceChanges != nil {
+		span.SetAttributes(tracing.ResourceCount(len(state.ResourceChanges)))
 	}
 
 	return state, nil
@@ -107,7 +134,7 @@ type tfDiffer struct {
 }
 
 func (td *tfDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldDir, newDir string) ([]ResourceDiff, []Resource, []Resource, error) {
-	tfplan, err := RenderTerraform(newDir)
+	tfplan, err := RenderTerraform(ctx, newDir)
 	if err != nil {
 		return nil, nil, nil, err
 	}

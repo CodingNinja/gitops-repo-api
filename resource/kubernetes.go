@@ -11,8 +11,10 @@ import (
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
 	"github.com/codingninja/gitops-repo-api/git"
+	"github.com/codingninja/gitops-repo-api/tracing"
 	"github.com/codingninja/gitops-repo-api/util"
 	r3diff "github.com/r3labs/diff/v3"
+	"go.opentelemetry.io/otel/codes"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -21,7 +23,18 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
+// RenderKubernetes renders Kubernetes manifests using Kustomize.
+// It extracts the tracer from the context if available.
+func RenderKubernetes(ctx context.Context, manifestDir string) (resmap.ResMap, error) {
+	tracer := getTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "resource.kubernetes.render")
+	defer span.End()
+
+	span.SetAttributes(
+		tracing.WorkingDir(manifestDir),
+		tracing.ResourceType("kubernetes"),
+	)
+
 	opts := krusty.MakeDefaultOptions()
 	pc := types.EnabledPluginConfig(types.BploLoadFromFileSys)
 	pc.HelmConfig.Command = "helm"
@@ -44,17 +57,21 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 	} else {
 		entries, err := os.ReadDir(manifestDir)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, err
 		}
 		for _, entry := range entries {
 			manifestAbsPath := path.Join(manifestDir, entry.Name())
 			if util.IsValidKubeFile(manifestAbsPath) {
 				resources = append(resources, entry.Name())
-			}else{
+			} else {
 				fmt.Printf("File %q is not a valid kubernetes manifest\n", manifestAbsPath)
 			}
 		}
 	}
+
+	span.SetAttributes(tracing.ResourceCount(len(resources)))
 
 	kust := &types.Kustomization{
 		Resources: resources,
@@ -62,16 +79,26 @@ func RenderKubernetes(manifestDir string) (resmap.ResMap, error) {
 	kust.BuildMetadata = append(kust.BuildMetadata, "originAnnotations")
 	kustomization, err := yaml.Marshal(kust)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("unable to marshal - %w", err)
 	}
 	kustfile := path.Join(manifestDir, KustomizationFileSuffix)
 	if err := os.WriteFile(kustfile, kustomization, 0o777); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("unable to write new kustomization - %w", err)
 	}
 
 	resmap, err := k.Run(filesys.MakeFsOnDisk(), filepath.Dir(kustfile))
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("unable to build entrypoint with  kustomize - %w", err)
+	}
+
+	if resmap != nil {
+		span.SetAttributes(tracing.ResourceCount(resmap.Size()))
 	}
 
 	return resmap, nil
@@ -104,7 +131,7 @@ type kubeDiffer struct{}
 
 func (kd *kubeDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	old, new, err := extractConcurrent(ep, oldPath, newPath, func(dir string, ep entrypoint.Entrypoint) (resmap.ResMap, error) {
-		return RenderKubernetes(dir)
+		return RenderKubernetes(ctx, dir)
 	})
 	if err != nil {
 		return nil, nil, nil, err

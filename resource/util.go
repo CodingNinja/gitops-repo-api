@@ -1,12 +1,35 @@
 package resource
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/codingninja/gitops-repo-api/entrypoint"
+	"github.com/codingninja/gitops-repo-api/tracing"
 )
+
+// contextKey is a custom type for context keys to avoid collisions.
+type contextKey int
+
+const (
+	tracerContextKey contextKey = iota
+)
+
+// ContextWithTracer returns a new context with the provided tracer attached.
+func ContextWithTracer(ctx context.Context, tracer *tracing.Tracer) context.Context {
+	return context.WithValue(ctx, tracerContextKey, tracer)
+}
+
+// getTracerFromContext extracts a tracer from the context.
+// If no tracer is found, it returns a no-op tracer.
+func getTracerFromContext(ctx context.Context) *tracing.Tracer {
+	if tracer, ok := ctx.Value(tracerContextKey).(*tracing.Tracer); ok {
+		return tracer
+	}
+	return tracing.NoOpTracer()
+}
 
 type ResourceExtractor[T any] func(dir string, ep entrypoint.Entrypoint) (T, error)
 
