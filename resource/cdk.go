@@ -14,27 +14,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var NpxExecutable = "npx"
-var NpmExecutable = "npm"
-var NpxExecutablePath = ""
-var NpmExecutablePath = ""
+var (
+	NpxExecutable     = "npx"
+	NpmExecutable     = "npm"
+	NpxExecutablePath = ""
+	NpmExecutablePath = ""
+)
 
 func init() {
 	npxPath, err := exec.LookPath(NpxExecutable)
-	if err != nil {
-		panic(fmt.Errorf("unable to locate %s executable - %w", NpxExecutable, err))
+	if err == nil {
+		NpxExecutablePath = npxPath
 	}
-	NpxExecutablePath = npxPath
 
 	npmPathd, err := exec.LookPath(NpmExecutable)
-	if err != nil {
-		panic(fmt.Errorf("unable to locate %s executable - %w", NpxExecutable, err))
+	if err == nil {
+		NpmExecutablePath = npmPathd
 	}
-	NpmExecutablePath = npmPathd
 }
+
 // RenderCdk renders a CDK application to a CloudFormation template.
 // It extracts the tracer from the context if available.
 func RenderCdk(ctx context.Context, cdkDir string) (*CloudformationTemplate, error) {
+	if NpmExecutablePath == "" || NpxExecutablePath == "" {
+		return nil, fmt.Errorf("missing NPM Executable Path or NPX Executable path")
+	}
 	tracer := getTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "resource.cdk.render")
 	defer span.End()
@@ -77,8 +81,7 @@ func RenderCdk(ctx context.Context, cdkDir string) (*CloudformationTemplate, err
 	return cft, nil
 }
 
-type cdkDiffer struct {
-}
+type cdkDiffer struct{}
 
 func (td *cdkDiffer) Diff(ctx context.Context, rs *git.RepoSpec, ep entrypoint.Entrypoint, oldPath, newPath string) ([]ResourceDiff, []Resource, []Resource, error) {
 	// Won't actually run concurrently because we block during CFN builds currently due to a concurrent map read/write related to intrinsic funcs in cfn library
