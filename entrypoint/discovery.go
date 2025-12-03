@@ -19,7 +19,7 @@ type EntrypointFactory interface {
 // EntrypointDiscoverySpec represents a specification for discovering Entrypoint directories in a repository
 type EntrypointDiscoverySpec struct {
 	Type    EntrypointType         `json:"type"`
-	Regex   regexp.Regexp          `json:"regex"`
+	Regex   *regexp.Regexp         `json:"regex"`
 	Files   bool                   `json:"files"`
 	Context map[string]interface{} `json:"context"`
 }

@@ -106,7 +106,7 @@ func isValidEntrypoint(epPath string, epType EntrypointType) bool {
 }
 
 // regexNamedMatches returns a map of any named capture => value in regex and a boolean indicating if a match was made at all
-func regexNamedMatches(str string, regex regexp.Regexp) (map[string]string, bool) {
+func regexNamedMatches(str string, regex *regexp.Regexp) (map[string]string, bool) {
 	match := regex.FindStringSubmatch(str)
 
 	if match == nil {
